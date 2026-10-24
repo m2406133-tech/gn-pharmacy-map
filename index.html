@@ -88,8 +88,8 @@ a{color:var(--hosp)}
 .note{font-size:12px;color:var(--muted);margin-top:18px;line-height:1.6}
 
 /* ---------- map ---------- */
-#mapWrap{position:relative;min-height:0}
-#map{position:absolute;inset:0;overflow:hidden}
+#mapWrap{position:relative;min-height:0;height:100%}
+#map{width:100%;height:100%;overflow:hidden}
 .notice{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--tint)}
 .notice div{max-width:440px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px 22px}
 .notice h2{font-size:16px;margin:0 0 8px}
@@ -371,7 +371,11 @@ if (!KEY || KEY === 'YOUR_CLIENT_ID') {
     <p>왼쪽 목록과 네이버지도 링크는 지도 없이도 쓸 수 있습니다.</p>`);
 } else {
   const s = document.createElement('script');
-  s.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=' + encodeURIComponent(KEY) + '&callback=initMap';
+  s.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=' + encodeURIComponent(KEY);
+  s.onload = () => {
+    if (window.naver && window.naver.maps && window.naver.maps.Map) initMap();
+    else showNotice('<h2>지도 스크립트를 불러오지 못했습니다</h2><p>새로고침한 뒤에도 같으면 Client ID와 등록한 Web 서비스 URL을 확인하세요.</p>');
+  };
   s.onerror = () => showNotice('<h2>지도 스크립트를 불러오지 못했습니다</h2><p>인터넷 연결을 확인한 뒤 새로고침하세요.</p>');
   document.head.appendChild(s);
 }
