@@ -127,8 +127,8 @@ a{color:var(--hosp)}
 .ph-staff{display:inline-block;font-size:12px;font-weight:600;color:var(--rx);background:var(--rx-soft);padding:0 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
 .ph-staff.han{color:#7A4B00;background:var(--ring-soft)}
 .ph-rank{display:inline-block;font-size:12px;font-weight:700;color:#fff;background:var(--ink);padding:0 6px;border-radius:3px;margin-right:6px;vertical-align:1px}
-.rank-edit{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted)}
-.rank-edit button{padding:2px 8px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink);text-align:center}
+.rank-edit{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted)}
+.rank-edit button{padding:2px 8px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink);text-align:center;white-space:nowrap}
 .rank-edit button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .edit-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:#7A4B00;background:var(--ring-soft);border-radius:6px;padding:6px 10px}
 .edit-bar button{padding:2px 8px;border:1px solid #E2C27A;border-radius:4px;background:#fff;text-align:center}
@@ -141,6 +141,7 @@ a{color:var(--hosp)}
 .iw .d{color:var(--rx);font-weight:600}
 .iw .rk{color:#fff;background:var(--ink);font-size:11.5px;padding:0 5px;border-radius:3px}
 .iw .rank-edit{margin-top:4px}
+.iw .rank-edit span{flex-basis:100%}
 .iw a{margin-right:10px;font-weight:500;text-decoration:none}
 
 @media (max-width: 860px){
@@ -189,7 +190,7 @@ a{color:var(--hosp)}
 <script>
 /* ===== 설정: 네이버 클라우드에서 발급받은 Client ID를 넣으세요 ===== */
 const NCP_KEY_ID = 'ojaq60eret';
-/* ===== 병원별 약국 순번: { 병원 no: [1번 약국 id, 2번 약국 id] } =====
+/* ===== 병원별 약국 순번: { 병원 no: [1번 약국 id, 2번 약국 id, 3번 약국 id] } =====
    주소 끝에 ?edit를 붙여 열면 지정할 수 있고, 내보내기한 값을 여기에 넣습니다. */
 const RANK = {
   25: [171, 172], // 연세에스병원: 1번 세명약국, 2번 예일약국
@@ -215,7 +216,7 @@ const tierClass = t => t === '상급종합' ? 't1' : (t === '종합병원' ? 't2
 const phOf = no => P.filter(p => p.h.some(z => z[0] === no))
                     .map(p => ({ p, d: p.h.find(z => z[0] === no)[1] }))
                     .sort((a, b) => (rankNo(no, a.p.id) || 99) - (rankNo(no, b.p.id) || 99) || a.d - b.d);
-const rankBtns = (no, id, label = '순번') => `<div class="rank-edit">${label} ${[1, 2].map(k =>
+const rankBtns = (no, id, label = '순번') => `<div class="rank-edit"><span>${label}</span>${[1, 2, 3].map(k =>
   `<button type="button" data-rank="${k}" data-ph="${id}" aria-pressed="${rankNo(no, id) === k}">${k}번</button>`).join('')}<button type="button" data-rank="0" data-ph="${id}">해제</button></div>`;
 
 /* ---------- panel ---------- */
