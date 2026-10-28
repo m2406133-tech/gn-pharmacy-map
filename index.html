@@ -125,6 +125,8 @@ a{color:var(--hosp)}
 .legend div{display:flex;flex-direction:column;gap:4px}
 .legend b{font-size:11px;font-weight:600;color:var(--muted)}
 .legend span{display:flex;align-items:center;gap:7px}
+.legend span[hidden]{display:none}
+.lg-w{font-style:normal;font-size:13px;line-height:1}
 .lg-m{width:10px;height:10px;border-radius:2px;background:var(--mid);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--mid)}
 .lg-c{width:10px;height:10px;border-radius:50%;background:var(--loc);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--loc)}
 .lg-lp{width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px var(--rx)}
@@ -156,6 +158,8 @@ a{color:var(--hosp)}
 .ph-staff{display:inline-block;font-size:12px;font-weight:600;color:var(--rx);background:var(--rx-soft);padding:0 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
 .ph-staff.han{color:#7A4B00;background:var(--ring-soft)}
 .ph-grp{display:inline-block;font-size:12px;font-weight:600;color:var(--hosp);background:var(--hosp-soft);padding:0 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
+.ph-wh{display:inline-block;font-size:12px;font-weight:600;color:#7A1F1F;background:#FBE4E4;padding:0 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
+.wm{transform:translate(-11px,-12px);font:20px/1 "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;cursor:pointer;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
 /* 로컬: 캔버스 점, 고른 의원과 그 주변 로컬 약국만 HTML 마커 */
 .has-sel .loc-layer{opacity:.35}
 .hide-hosp .hm,.hide-hosp .pm:not(.lp){display:none!important}
@@ -245,7 +249,8 @@ a{color:var(--hosp)}
       <span><i class="lg-m"></i>병원 (전문의 15명 미만)</span>
       <b>로컬</b>
       <span><i class="lg-c"></i>의원</span>
-      <span><i class="lg-lp"></i>약국</span></div>
+      <span><i class="lg-lp"></i>약국</span>
+      <span id="lgWh" hidden><i class="lg-w">💩</i>창고형약국</span></div>
   </div>
 </main>
 
@@ -260,10 +265,11 @@ const PH = Object.fromEntries(P.map(p => [p.id, p]));
 const HN = Object.fromEntries(H.map(h => [h.no, h]));
 const REGIONS = ['전체','창원','진주','김해','양산','거제','사천','통영'];
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
-  groups:{ hosp:true, mid:true, loc:true }, lsel:null, lmk:[], lq:'', more:{ m:20, c:50 }, dots:null };
+  groups:{ hosp:true, mid:true, loc:true }, lsel:null, lmk:[], lq:'', more:{ m:20, c:50 }, dots:null, wm:[], whSig:null };
 /* 병원별 약국 순번은 rank.json({ 병원 no: [1번 약국 id, 2번, 3번] })에 있고,
    나만 보는 메모는 비공개 저장소의 memo.json({ h: { 병원 no: 글 }, p: { 약국 id: 글 }, m: { 중소병원 id: 글 },
-   c: { 로컬 의원 id: 글 }, l: { 로컬 약국 id: 글 } })에 있다.
+   c: { 로컬 의원 id: 글 }, l: { 로컬 약국 id: 글 }, w: { 'p:약국 id' 또는 'l:로컬 약국 id': 1 또는 0 } })에 있다.
+   w는 창고형약국 자동 판정을 편집에서 직접 바꾼 곳이다(1은 창고형으로, 0은 아닌 것으로).
    '편집'에서 저장하면 GitHub API로 두 파일을 직접 고친다. 메모는 토큰이 있는 브라우저에서만 불러온다 */
 const RANK_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-map/contents/rank.json';
 const MEMO_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-memo/contents/memo.json';
@@ -287,6 +293,19 @@ const phOf = no => P.filter(p => p.h.some(z => z[0] === no))
                     .sort((a, b) => (rankNo(no, a.p.id) || 99) - (rankNo(no, b.p.id) || 99) || a.d - b.d);
 const rankBtns = (no, id, label = '순번') => `<div class="rank-edit"><span>${label}</span>${[1, 2, 3].map(k =>
   `<button type="button" data-rank="${k}" data-ph="${id}" aria-pressed="${rankNo(no, id) === k}">${k}번</button>`).join('')}<button type="button" data-rank="0" data-ph="${id}">해제</button></div>`;
+/* 창고형약국: 2025년 이후 개설했고 약국영업면적(local.json의 ar·hp, 인허가 자료)이 50평(165㎡) 이상인 곳.
+   편집에서 직접 바꾼 곳(memo.w)이 자동 판정보다 우선한다. 메모처럼 비공개라서 토큰이 있는 브라우저에서만 보인다.
+   key는 'p:약국 id' 또는 'l:로컬 약국 id' */
+const WH_SINCE = '2025-01-01', WH_AREA = 165;
+const whOf = key => { const [kind, id] = key.split(':'), p = kind === 'p' ? PH[id] : LOC.P[id];
+  return { p, ar: kind === 'p' ? (LOC.hp || {})[id] : p && p.ar }; };
+const autoWh = key => { const { p, ar } = whOf(key); return !!p && p.o >= WH_SINCE && ar >= WH_AREA; };
+const isWh = key => !!state.memo && (key in state.memo.w ? !!state.memo.w[key] : autoWh(key));
+const whTag = key => { if (!isWh(key)) return '';
+  const { p, ar } = whOf(key), why = ar ? `약국영업면적 ${ar}㎡(${Math.round(ar / 3.3058)}평), ${p.o} 개설` : '직접 지정';
+  return `<span class="ph-wh" title="${why}">💩 창고형</span>`; };
+const whBtn = key => state.edit && state.memo
+  ? `<div class="rank-edit"><button type="button" data-wh="${key}" aria-pressed="${isWh(key)}">💩 창고형약국</button></div>` : '';
 
 /* 중소병원(m)과 로컬 의원(c)·약국(p)은 local.json(tools/build_local.py로 만든다)에 있다. 수천 곳이라 HTML 마커 대신
    캔버스 한 장에 점으로 그리고, 고른 병원·의원과 그 주변 로컬 약국만 HTML 마커로 띄운다 */
@@ -413,7 +432,7 @@ function renderDetail(no){
       const others = p.h.filter(z => z[0] !== no).map(z => `${esc(HN[z[0]].s)} ${z[1]}m`);
       const k = rankNo(no, p.id);
       return `<li class="ph-item" id="ph-${p.id}" data-id="${p.id}">
-        <button type="button" class="ph-top" data-focus="${p.id}"><span>${k ? `<span class="ph-rank">${k}번</span>` : ''}<span class="ph-name">${esc(p.n)}</span>${p.ps ? `<span class="ph-staff">약사 ${p.ps}</span>` : ''}${p.hs ? `<span class="ph-staff han">한약사 ${p.hs}</span>` : ''}</span><span class="ph-dist">${d}m</span></button>
+        <button type="button" class="ph-top" data-focus="${p.id}"><span>${k ? `<span class="ph-rank">${k}번</span>` : ''}<span class="ph-name">${esc(p.n)}</span>${whTag('p:' + p.id)}${p.ps ? `<span class="ph-staff">약사 ${p.ps}</span>` : ''}${p.hs ? `<span class="ph-staff han">한약사 ${p.hs}</span>` : ''}</span><span class="ph-dist">${d}m</span></button>
         <div class="ruler" aria-hidden="true"><i style="width:${Math.min(100, d / 5)}%"></i></div>
         <div class="ph-sub">${esc(p.a)}</div>
         <div class="ph-sub">${p.t ? `<b>${esc(p.t)}</b>` : '전화번호 없음'}<span style="margin-left:10px">개설 ${esc(p.o)}</span></div>
@@ -421,6 +440,7 @@ function renderDetail(no){
         <div class="ph-links"><a href="${nmapUrl(p.q)}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(p.qa)}" target="_blank" rel="noopener">주소로 보기</a></div>
         ${memoBox('p', p.id)}
         ${state.edit ? rankBtns(no, p.id) : ''}
+        ${whBtn('p:' + p.id)}
       </li>`; }).join('')}</ol>
     <p class="note">약사 수는 약국이 심평원에 신고한 근무 약사 수입니다. 근무 형태(상근·비상근)는 구분되지 않습니다. 거리는 심평원 좌표 기준 직선거리입니다. 실제 걷는 거리와 출입구 위치에 따라 체감 거리가 다릅니다. 네이버지도 링크는 상호 검색이라 같은 이름의 다른 업소가 함께 나올 수 있으니 주소로 대조하세요.</p>`;
   document.getElementById('list').hidden = true;
@@ -455,12 +475,13 @@ function renderPlace(kind, id){
     <div class="sec-h"><h3>300m 안 약국 ${items.length}곳</h3><span>병원권에 속한 약국에는 '병원권' 표시가 붙습니다.</span></div>
     <div class="scale" aria-hidden="true"><span style="left:0;transform:none">0</span><span style="left:33.3%">100m</span><span style="left:100%;transform:translateX(-100%)">300m</span></div>
     <ol class="ph-list">${items.map(({p, d, hosp}) => `<li class="ph-item" id="${hosp ? 'ph' : 'lp'}-${p.id}">
-        <button type="button" class="ph-top" data-${hosp ? 'focus' : 'lfocus'}="${p.id}"><span><span class="ph-name">${esc(p.n)}</span>${hosp ? '<span class="ph-grp">병원권</span>' : ''}${p.ps ? `<span class="ph-staff">약사 ${p.ps}</span>` : ''}${p.hs ? `<span class="ph-staff han">한약사 ${p.hs}</span>` : ''}</span><span class="ph-dist">${d}m</span></button>
+        <button type="button" class="ph-top" data-${hosp ? 'focus' : 'lfocus'}="${p.id}"><span><span class="ph-name">${esc(p.n)}</span>${whTag((hosp ? 'p:' : 'l:') + p.id)}${hosp ? '<span class="ph-grp">병원권</span>' : ''}${p.ps ? `<span class="ph-staff">약사 ${p.ps}</span>` : ''}${p.hs ? `<span class="ph-staff han">한약사 ${p.hs}</span>` : ''}</span><span class="ph-dist">${d}m</span></button>
         <div class="ruler r300" aria-hidden="true"><i style="width:${Math.min(100, d / 3)}%"></i></div>
         <div class="ph-sub">${esc(p.a)}</div>
         <div class="ph-sub">${p.t ? `<b>${esc(p.t)}</b>` : '전화번호 없음'}<span style="margin-left:10px">개설 ${esc(p.o)}</span></div>
         <div class="ph-links"><a href="${nmapUrl(hosp ? p.q : locQ(p))}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(hosp ? p.qa : locQa(p))}" target="_blank" rel="noopener">주소로 보기</a></div>
         ${memoBox(hosp ? 'p' : 'l', p.id)}
+        ${whBtn((hosp ? 'p:' : 'l:') + p.id)}
       </li>`).join('')}</ol>
     <p class="note">의사·약사 수는 심평원 신고 인원입니다. 중소병원과 로컬 의원·약국은 ${LOC.basis.replace(/-/g, '.')} 기준이고, 병원권 약국은 ${DATA.basis.replace(/-/g, '.')} 기준이라 그사이 문을 열거나 닫은 곳은 다를 수 있습니다. 거리는 심평원 좌표 기준 직선거리입니다.</p>`;
   document.getElementById('list').hidden = true;
@@ -549,8 +570,8 @@ function focusLoc(id, pan){
   const p = LOC.P[id], pos = new naver.maps.LatLng(p.y, p.x);
   if (pan) state.map.panTo(pos);
   const staff = [p.ps ? `약사 ${p.ps}명` : '', p.hs ? `한약사 ${p.hs}명` : ''].filter(Boolean).join(', ');
-  state.iw.setContent(`<div class="iw"><strong>${esc(p.n)}</strong>${staff ? staff + '<br>' : ''}${p.t ? esc(p.t) + '<br>' : ''}로컬 약국, 100m 안 의원 <span class="d">${p.c100}곳</span>
-    <div style="margin-top:6px"><a href="${nmapUrl(locQ(p))}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(locQa(p))}" target="_blank" rel="noopener">주소로 보기</a></div>${state.memo && state.memo.l[id] ? `<div class="iw-memo">${esc(state.memo.l[id])}</div>` : ''}</div>`);
+  state.iw.setContent(`<div class="iw"><strong>${esc(p.n)}${whTag('l:' + id)}</strong>${staff ? staff + '<br>' : ''}${p.t ? esc(p.t) + '<br>' : ''}${p.lic ? `심평원 자료에 아직 없어 인허가 자료로 넣은 약국(${esc(p.o)} 개설)<br>` : ''}로컬 약국, 100m 안 의원 <span class="d">${p.c100}곳</span>
+    <div style="margin-top:6px"><a href="${nmapUrl(locQ(p))}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(locQa(p))}" target="_blank" rel="noopener">주소로 보기</a></div>${state.memo && state.memo.l[id] ? `<div class="iw-memo">${esc(state.memo.l[id])}</div>` : ''}${whBtn('l:' + id)}</div>`);
   state.iw.open(state.map, pos);
 }
 function openPhInfo(id){
@@ -559,8 +580,8 @@ function openPhInfo(id){
     return `${esc(HN[z[0]].s)} <span class="d">${z[1]}m</span>${k ? ` <span class="rk">${k}번</span>` : ''}`; }).join('<br>');
   const edit = state.edit && p.h.some(z => z[0] === state.sel) ? rankBtns(state.sel, id, `${esc(HN[state.sel].s)} 순번`) : '';
   const staff = [p.ps ? `약사 ${p.ps}명` : '', p.hs ? `한약사 ${p.hs}명` : ''].filter(Boolean).join(', ');
-  state.iw.setContent(`<div class="iw"><strong>${esc(p.n)}</strong>${staff}<br>${p.t ? esc(p.t) + '<br>' : ''}${rows}
-    <div style="margin-top:6px"><a href="${nmapUrl(p.q)}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(p.qa)}" target="_blank" rel="noopener">주소로 보기</a></div>${state.memo && state.memo.p[id] ? `<div class="iw-memo">${esc(state.memo.p[id])}</div>` : ''}${edit}</div>`);
+  state.iw.setContent(`<div class="iw"><strong>${esc(p.n)}${whTag('p:' + id)}</strong>${staff}<br>${p.t ? esc(p.t) + '<br>' : ''}${rows}
+    <div style="margin-top:6px"><a href="${nmapUrl(p.q)}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(p.qa)}" target="_blank" rel="noopener">주소로 보기</a></div>${state.memo && state.memo.p[id] ? `<div class="iw-memo">${esc(state.memo.p[id])}</div>` : ''}${edit}${whBtn('p:' + id)}</div>`);
   state.iw.open(state.map, state.pm[id].m);
 }
 
@@ -596,6 +617,39 @@ function markMemos(){
   Object.entries(state.pm).forEach(([id, o]) => o.el.classList.toggle('has-memo', !!m.p[id]));
   state.lmk.forEach(o => o.el.classList.toggle('has-memo', !!m[o.kind][o.id]));
   if (state.dots) state.dots.draw();
+  markWarehouses();
+}
+// 창고형약국은 몇 곳뿐이라 HTML 마커로 띄운다. 약국 표시나 그 약국의 묶음을 끄면 함께 숨긴다
+function markWarehouses(){
+  if (!state.map) return;
+  const showPh = document.getElementById('optPh').checked;
+  const all = P.map(p => 'p:' + p.id).concat(LOC.p.map(p => 'l:' + p.id));
+  const keys = !state.memo || !showPh ? [] : all.filter(k => isWh(k) && (k[0] === 'p' ? state.groups.hosp : state.groups.loc));
+  document.getElementById('lgWh').hidden = !keys.length;
+  const sig = keys.join();   // 로컬 자료가 늦게 와도 그때 키가 늘어나서 다시 그린다
+  if (sig === state.whSig) return;
+  state.whSig = sig;
+  state.wm.forEach(m => m.setMap(null));
+  state.wm = keys.map(k => {
+    const [kind, id] = k.split(':'), p = whOf(k).p;
+    const el = document.createElement('div');
+    el.className = 'wm'; el.textContent = '💩'; el.title = `${p.n} (창고형약국)`;
+    const m = new naver.maps.Marker({ map: state.map, position: new naver.maps.LatLng(p.y, p.x), zIndex: 90,
+      icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
+    naver.maps.Event.addListener(m, 'click', () => kind === 'p' ? focusPh(+id, false) : focusLoc(id, false));
+    return m;
+  });
+}
+// 자동 판정과 같아지면 직접 바꾼 기록을 지워서 w에는 판정과 다른 곳만 남긴다
+function toggleWh(key){
+  const w = { ...state.memo.w }, next = !isWh(key);
+  if (next === autoWh(key)) delete w[key]; else w[key] = next ? 1 : 0;
+  state.memo = { ...state.memo, w };
+  store.set(MEMO_KEY, JSON.stringify(state.memo));
+  state.msg = '';
+  refreshRank();
+  const [kind, id] = key.split(':');
+  if (kind === 'p') focusPh(+id, false); else focusLoc(id, false);
 }
 function setMemo(kind, key, text){
   const part = { ...state.memo[kind] };
@@ -617,7 +671,7 @@ async function loadMemo(token){
   if (r.status === 401) throw new Error('401');
   if (!r.ok) return null;   // 비공개 저장소에 권한이 없으면 GitHub는 404를 준다
   const m = await r.json();
-  return { h: m.h || {}, p: m.p || {}, m: m.m || {}, c: m.c || {}, l: m.l || {} };
+  return { h: m.h || {}, p: m.p || {}, m: m.m || {}, c: m.c || {}, l: m.l || {}, w: m.w || {} };
 }
 async function startEdit(){
   const token = store.get(TOKEN_KEY) || askToken();
@@ -686,11 +740,12 @@ function renderEditBar(){
 }
 // 네이버 정보창이 클릭 전파를 막으므로 캡처 단계에서 받는다
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-rank], [data-act]'); if (!b) return;
+  const b = e.target.closest('[data-rank], [data-act], [data-wh]'); if (!b) return;
   const act = b.dataset.act;
   if (act === 'edit') startEdit();
   else if (act === 'save') saveAll();
   else if (act === 'done') endEdit();
+  else if (b.dataset.wh) toggleWh(b.dataset.wh);
   else setRank(+b.dataset.ph, +b.dataset.rank);
 }, true);
 document.addEventListener('input', e => {
@@ -711,7 +766,7 @@ fetch('local.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.r
   const byId = xs => Object.fromEntries(xs.map(x => [x.id, x]));
   L.m.concat(L.c, L.p).forEach(x => { x.m = merc(x.x, x.y); });
   Object.assign(LOC, L, { M: byId(L.m), C: byId(L.c), P: byId(L.p) });
-  renderSummary(); renderPlaceRows(); addDots();
+  renderSummary(); renderPlaceRows(); addDots(); markWarehouses();
 }).catch(() => { LOC.err = true; renderSummary(); renderPlaceRows(); });
 
 /* ---------- map ---------- */
@@ -840,9 +895,10 @@ const setGroup = (g, on) => {
   if (selGroup === g) clearSel();
   if (!state.sel && !state.lsel) renderList();
   if (state.dots) state.dots.draw();
+  markWarehouses();
 };
 document.getElementById('optRings').onchange = () => Object.values(state.rings).forEach(c => c.setVisible(ringsOn()));
-document.getElementById('optPh').onchange = e => { document.getElementById('map').classList.toggle('hide-ph', !e.target.checked); if (state.dots) state.dots.draw(); };
+document.getElementById('optPh').onchange = e => { document.getElementById('map').classList.toggle('hide-ph', !e.target.checked); if (state.dots) state.dots.draw(); markWarehouses(); };
 document.getElementById('optHosp').onchange = e => {
   document.getElementById('map').classList.toggle('hide-hosp', !e.target.checked);
   setGroup('hosp', e.target.checked);
