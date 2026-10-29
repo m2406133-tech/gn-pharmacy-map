@@ -24,10 +24,12 @@ a{color:var(--hosp)}
 
 /* ---------- panel ---------- */
 #panel{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--paper)}
-.masthead{padding:20px 20px 14px}
-.masthead h1{font-size:19px;line-height:1.3;margin:0 0 6px;font-weight:700;letter-spacing:-.01em}
-.masthead p{margin:0;color:var(--muted);font-size:13px}
-.controls{padding:0 20px 12px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+.controls{padding:16px 20px 12px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+/* 자료 기준 설명은 목록 맨 아래에 접어 둔다. 상세 화면에서는 목록과 함께 숨긴다 */
+.about{margin:8px 20px 20px;font-size:12.5px;color:var(--muted)}
+.about summary{cursor:pointer;padding:6px 0}
+.about p{margin:2px 0 0;line-height:1.6}
+#list[hidden] + .about{display:none}
 .regions{display:flex;flex-wrap:wrap;gap:6px}
 .regions button{padding:4px 11px;border:1px solid var(--line);border-radius:999px;font-size:13px;background:#fff}
 .regions button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -38,7 +40,7 @@ a{color:var(--hosp)}
 .grp-opt input{width:16px;height:16px;margin:2px 0 0;flex:none;accent-color:var(--hosp)}
 .grp-opt.mid input{accent-color:var(--mid)}
 .grp-opt.loc input{accent-color:var(--loc)}
-.grp-opt b{display:block;font-size:13px;font-weight:600;color:var(--hosp)}
+.grp-opt b{display:block;font-size:13px;font-weight:600;color:var(--hosp);white-space:nowrap}
 .grp-opt.mid b{color:var(--mid)}
 .grp-opt.loc b{color:var(--loc)}
 .grp-opt small{display:block;font-size:11.5px;line-height:1.35;color:var(--muted)}
@@ -200,9 +202,10 @@ a{color:var(--hosp)}
   body{grid-template-columns:1fr;grid-template-rows:52dvh 1fr;overflow:hidden}
   #mapWrap{grid-row:1}
   #panel{grid-row:2;border-right:0;border-top:1px solid var(--line)}
-  .masthead{padding:14px 16px 10px}
-  .masthead h1{font-size:17px}
-  .controls{padding:0 16px 10px}
+  .controls{padding:12px 16px 10px}
+  .about{margin:8px 16px 16px}
+  .grp-opt{gap:5px;padding:6px}
+  .grp-opt small{font-size:11px}
   .h-row{padding:11px 16px;grid-template-columns:54px 1fr auto}
   .spec b{font-size:22px}
   .detail{padding:12px 16px 24px}
@@ -216,10 +219,6 @@ a{color:var(--hosp)}
 </head>
 <body>
 <aside id="panel" aria-label="병원과 약국 목록">
-  <header class="masthead">
-    <h1>경남 병원·의원 주변 약국 지도</h1>
-    <p id="summary"></p>
-  </header>
   <div class="controls">
     <div class="regions" id="regions" role="group" aria-label="지역 선택"></div>
     <div class="groups" role="group" aria-label="묶음 선택">
@@ -233,6 +232,7 @@ a{color:var(--hosp)}
   </div>
   <div class="scroll" id="scroll">
     <div id="list"></div>
+    <details class="about"><summary>자료 기준</summary><p id="summary"></p></details>
     <div id="detail" class="detail" hidden></div>
   </div>
 </aside>
