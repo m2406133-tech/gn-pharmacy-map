@@ -73,6 +73,8 @@ a{color:var(--hosp)}
 .spec.loc{color:var(--loc)}
 .spec.rx{color:var(--rx)}
 .tier.loc{background:var(--loc-soft);color:var(--loc)}
+.tier.rx{background:var(--rx-soft);color:var(--rx)}
+.ph-links-list{margin:8px -20px 0;border-top:1px solid var(--line)}
 .empty{padding:24px 20px;color:var(--muted)}
 
 /* detail */
@@ -222,6 +224,7 @@ a{color:var(--hosp)}
   .h-row{padding:11px 16px;grid-template-columns:54px 1fr auto}
   .spec b{font-size:22px}
   .detail{padding:12px 16px 24px}
+  .ph-links-list{margin:8px -16px 0}
   .ph-item.active{margin:0 -16px;padding:10px 16px}
   .grp-h{padding:12px 16px 6px}
   .name-search{width:calc(100% - 32px);margin:10px 16px 0}
@@ -285,7 +288,7 @@ const PH = Object.fromEntries(P.map(p => [p.id, p]));
 const HN = Object.fromEntries(H.map(h => [h.no, h]));
 const REGIONS = ['전체','창원','진주','김해','양산','거제','사천','통영'];
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
-  groups:{ hosp:true, mid:true, loc:true }, lsel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null, wm:[], whSig:null };
+  groups:{ hosp:true, mid:true, loc:true }, lsel:null, psel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null, wm:[], whSig:null };
 /* 병원별 약국 순번은 rank.json({ 병원 no: [1번 약국 id, 2번, 3번] })에 있고, 중소병원은 'm:중소병원 id' 키에
    ['p:약국 id' 또는 'l:로컬 약국 id', …]로 함께 둔다(중소병원 300m 안에는 두 종류 약국이 섞여 있어서).
    창고형약국 자동 판정을 직접 바꾼 곳은 wh.json({ 'p:약국 id' 또는 'l:로컬 약국 id': 1 또는 0 })에 있다
@@ -376,7 +379,7 @@ function renderList(){
     const b = e.target.closest('.h-row, .more'); if (!b) return;
     if (b.dataset.no) select(+b.dataset.no);
     else if (b.dataset.id) selectPlace(b.dataset.kind, b.dataset.id);
-    else if (b.dataset.rx) showPh(b.dataset.rx);
+    else if (b.dataset.rx) selectPh(b.dataset.rx);
     else { state.more[b.dataset.more] += STEP[b.dataset.more]; renderRows(); }
   };
   const s = document.getElementById('nameSearch');
@@ -433,9 +436,18 @@ function renderPlaceRows(){
       : '<p class="empty">이 화면에는 없습니다. 지도를 옮기거나 축소해 보세요.</p>';
   });
 }
-// 약국은 검색할 때만 보여 준다. 병원권 약국은 병원권 묶음, 로컬 약국은 로컬 묶음을 켰을 때 찾는다.
-// key는 창고형약국과 같은 'p:약국 id'·'l:로컬 약국 id'다
-const nearH = p => p.h.reduce((a, b) => b[1] < a[1] ? b : a);
+/* 약국과 연계된 병원·의원: 그 약국을 주변 약국으로 꼽는 곳이다. 상세 화면과 같은 기준으로 병원권 병원은 500m(p.h),
+   중소병원과 로컬 의원은 300m 안이다. 병원권 → 중소병원 → 의원 순, 같은 종류끼리는 가까운 순으로 둔다.
+   key는 창고형약국과 같은 'p:약국 id'·'l:로컬 약국 id'다 */
+const phByKey = key => key[0] === 'p' ? PH[key.slice(2)] : LOC.P[key.slice(2)];
+function linksOf(key){
+  const p = phByKey(key), byD = (a, b) => a.d - b.d;
+  const near = kind => LOC[kind].map(x => ({ kind, x, d: gap(p, x) })).filter(z => z.d <= 300).sort(byD);
+  const hs = key[0] === 'p' ? p.h.map(([no, d]) => ({ kind: 'h', x: HN[no], d })).sort(byD) : [];
+  return hs.concat(near('m'), near('c'));
+}
+const linkName = z => z.kind === 'h' ? z.x.s : z.x.n;
+// 약국은 검색할 때만 보여 준다. 병원권 약국은 병원권 묶음, 로컬 약국은 로컬 묶음을 켰을 때 찾는다
 function renderPhRows(){
   const el = document.getElementById('pRows'); if (!el) return;
   const q = state.lq.trim(), inR = r => state.region === '전체' || r === state.region;
@@ -444,24 +456,46 @@ function renderPhRows(){
   showGrp(el, xs.length);
   const n = state.more.p;
   document.getElementById('pHead').textContent = `찾은 곳 ${xs.length}곳`;
-  el.innerHTML = xs.slice(0, n).map(({ p, key }) => { const hosp = key[0] === 'p', z = hosp && nearH(p);
+  el.innerHTML = xs.slice(0, n).map(({ p, key }) => { const ls = linksOf(key), z = ls[0];
     return `
     <button type="button" class="h-row" data-rx="${key}">
       <span class="spec rx"><b>${p.ps}</b><small>약사</small></span>
-      <span><span class="h-name">${esc(p.n)}${whTag(key)}${hosp ? '<span class="ph-grp">병원권</span>' : ''}</span>
+      <span><span class="h-name">${esc(p.n)}${whTag(key)}${key[0] === 'p' ? '<span class="ph-grp">병원권</span>' : ''}</span>
         <span class="h-meta">${esc(area(p))}</span>
-        <span class="h-sub">${hosp ? `${esc(HN[z[0]].s)}에서 ${z[1]}m` : `100m 안 의원 ${p.c100}곳`}${p.hs ? `, 한약사 ${p.hs}명` : ''}</span></span>
+        <span class="h-sub">${z ? `${esc(linkName(z))}에서 ${z.d}m${ls.length > 1 ? ` 외 ${ls.length - 1}곳` : ''}` : '300m 안 병원·의원 없음'}</span></span>
     </button>`; }).join('') + (xs.length > n ? `<button type="button" class="more" data-more="p">${Math.min(STEP.p, xs.length - n)}곳 더 보기</button>` : '');
 }
-// 병원권 약국은 가장 가까운 병원 상세를 열어 그 약국을 가리키고, 로컬 약국은 상세가 없어 지도에서 확대해 정보 창을 띄운다
-function showPh(key){
-  const id = key.slice(2);
-  if (key[0] === 'p') { select(nearH(PH[id])[0]); focusPh(+id, false); return; }
-  clearSel();
-  if (!state.map) return;
-  const p = LOC.P[id];
-  state.map.setCenter(new naver.maps.LatLng(p.y, p.x)); state.map.setZoom(17);
-  focusLoc(id, false);
+// 약국 상세. 연계된 병원·의원을 누르면 그 상세로 넘어간다
+function renderPh(key){
+  const p = phByKey(key), hosp = key[0] === 'p', ls = linksOf(key);
+  const staff = [`약사 ${p.ps}명`, p.hs ? `한약사 ${p.hs}명` : ''].filter(Boolean).join(', ');
+  const d = document.getElementById('detail');
+  d.innerHTML = `
+    <button type="button" class="back" id="back">목록으로</button>
+    <h2>${esc(p.n)}${whTag(key)}</h2>
+    <p class="addr"><span class="tier rx">${hosp ? '병원권 약국' : '로컬 약국'}</span>${esc(p.a)}</p>
+    <p class="addr">${p.t ? esc(p.t) : '전화번호 없음'}<span style="margin-left:10px">${staff}</span><span style="margin-left:10px">개설 ${esc(p.o)}</span></p>
+    <div class="links">
+      <a class="btn naver" href="${nmapUrl(hosp ? p.q : locQ(p))}" target="_blank" rel="noopener">네이버지도에서 약국 보기</a>
+      <a class="btn" href="${nmapUrl(hosp ? p.qa : locQa(p))}" target="_blank" rel="noopener">주소로 보기</a>
+    </div>
+    ${memoBox(key[0], key.slice(2))}
+    <div class="sec-h"><h3>연계된 병원·의원 ${ls.length}곳</h3><span>이 약국을 주변 약국으로 꼽는 곳입니다. 병원권 병원은 500m, 중소병원과 로컬 의원은 300m 안입니다.</span></div>
+    <div class="ph-links-list">${ls.length ? ls.map(({ kind, x, d }) => `
+      <button type="button" class="h-row" ${kind === 'h' ? `data-no="${x.no}"` : `data-kind="${kind}" data-id="${x.id}"`}>
+        <span class="spec ${kind === 'h' ? '' : kind === 'm' ? 'mid' : 'loc'}"><b>${kind === 'h' ? x.tot : x.d}</b><small>의사</small></span>
+        <span><span class="h-name">${esc(linkName({ kind, x }))}</span>
+          <span class="h-meta"><span class="tier ${kind === 'h' ? tierClass(x.typ) : kind === 'm' ? 'mid' : 'loc'}">${esc(kind === 'c' ? '의원' : x.typ)}</span>${esc(area(x))}</span></span>
+        <span class="ph-dist">${d}m</span>
+      </button>`).join('') : '<p class="empty">300m 안에 병원·의원이 없습니다.</p>'}</div>`;
+  document.getElementById('list').hidden = true;
+  d.hidden = false;
+  document.getElementById('scroll').scrollTop = 0;
+  document.getElementById('back').onclick = () => { clearSel(); renderList(); };
+  d.querySelector('.ph-links-list').onclick = e => {
+    const b = e.target.closest('.h-row'); if (!b) return;
+    if (b.dataset.no) select(+b.dataset.no); else selectPlace(b.dataset.kind, b.dataset.id);
+  };
 }
 function renderDetail(no){
   const h = HN[no], items = phOf(no);
@@ -604,9 +638,28 @@ function selectPlace(kind, id){
   if (kind === 'm') markRanks('m:' + id);
   addSelRings(c, [300, 100]);
 }
+// 약국 상세에서는 지도에 그 약국을 강조하고, 연계 기준 거리(병원권 약국은 500m까지)를 고리로 그린다
+function selectPh(key){
+  clearSel();
+  state.psel = key;
+  renderPh(key);
+  if (!state.map) return;
+  const p = phByKey(key), id = key.slice(2);
+  if (key[0] === 'p') state.pm[id].el.classList.add('focus');
+  else { addLocMarker('l', p); state.lmk[0].el.classList.add('focus'); }
+  addSelRings(p, key[0] === 'p' ? [500, 300, 100] : [300, 100]);
+}
+// 지도에서 약국을 눌렀을 때: 병원·의원 상세를 보고 있으면 지금처럼 그 안에서 약국을 가리키고(순번 편집), 아니면 약국 상세를 연다
+function tapPh(key){
+  if (!state.sel && !state.lsel) return selectPh(key);
+  const id = key.slice(2);
+  if (key[0] === 'l') return focusLoc(id, false);
+  if (state.sel && !PH[id].h.some(z => z[0] === state.sel)) select(PH[id].h[0][0]);
+  focusPh(+id, false);
+}
 function clearSel(){
   if (state.iw) state.iw.close();
-  state.lsel = null;
+  state.lsel = null; state.psel = null;
   if (!state.map) { state.sel = null; return; }
   if (state.sel) { state.hm[state.sel].el.classList.remove('sel'); state.hm[state.sel].m.setZIndex(100); }
   state.selRings.forEach(c => c.setMap(null)); state.selRings = [];
@@ -668,6 +721,7 @@ function refreshRank(){
   renderEditBar(); markMemos();
   if (state.sel) { renderDetail(state.sel); markRanks(state.sel); }
   else if (state.lsel) { renderPlace(state.lsel.kind, state.lsel.id); if (state.lsel.kind === 'm') markRanks('m:' + state.lsel.id); }
+  else if (state.psel) renderPh(state.psel);
 }
 function setRank(id, k){
   const no = state.sel || 'm:' + state.lsel.id;
@@ -703,12 +757,12 @@ function markWarehouses(){
   state.whSig = sig;
   state.wm.forEach(m => m.setMap(null));
   state.wm = keys.map(k => {
-    const [kind, id] = k.split(':'), p = whOf(k).p;
+    const p = whOf(k).p;
     const el = document.createElement('div');
     el.className = 'wm'; el.textContent = '💩'; el.title = `${p.n} (창고형약국)`;
     const m = new naver.maps.Marker({ map: state.map, position: new naver.maps.LatLng(p.y, p.x), zIndex: 90,
       icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
-    naver.maps.Event.addListener(m, 'click', () => kind === 'p' ? focusPh(+id, false) : focusLoc(id, false));
+    naver.maps.Event.addListener(m, 'click', () => tapPh(k));
     return m;
   });
 }
@@ -993,10 +1047,7 @@ function initMap(){
     el.className = 'pm'; el.title = `${p.n} (약사 ${p.ps}명${p.hs ? `, 한약사 ${p.hs}명` : ''})`;
     el.innerHTML = `<span>${p.ps || (p.hs ? '한' : '')}</span><b class="pm-rank"></b>`;
     const m = new naver.maps.Marker({ map, position: new naver.maps.LatLng(p.y, p.x), zIndex: 60, icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
-    naver.maps.Event.addListener(m, 'click', () => {
-      if (state.sel && !p.h.some(z => z[0] === state.sel)) select(p.h[0][0]);
-      focusPh(p.id, false);
-    });
+    naver.maps.Event.addListener(m, 'click', () => tapPh('p:' + p.id));
     state.pm[p.id] = { m, el };
   });
   const zoomClass = z => mapEl.classList.toggle('far', z < 12);
@@ -1005,7 +1056,7 @@ function initMap(){
   naver.maps.Event.addListener(map, 'click', e => {
     const p = state.dots && state.dots.hit(e.coord);
     if (!p) return state.iw.close();
-    if (p.kind === 'l') focusLoc(p.id, false); else selectPlace(p.kind, p.id);
+    if (p.kind === 'l') tapPh('l:' + p.id); else selectPlace(p.kind, p.id);
   });
   naver.maps.Event.addListener(map, 'idle', () => { if (!document.getElementById('list').hidden && !state.lq.trim()) renderPlaceRows(); });
   markMemos(); fitRegion(); zoomClass(map.getZoom()); addDots();
@@ -1017,7 +1068,7 @@ const setGroup = (g, on) => {
   state.groups[g] = on;
   const selGroup = state.sel ? 'hosp' : state.lsel ? (state.lsel.kind === 'm' ? 'mid' : 'loc') : null;
   if (selGroup === g) clearSel();
-  if (!state.sel && !state.lsel) renderList();
+  if (!state.sel && !state.lsel && !state.psel) renderList();
   if (state.dots) state.dots.draw();
   markWarehouses();
 };
