@@ -48,10 +48,13 @@ a{color:var(--hosp)}
 .grp-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0;padding:14px 20px 6px;font-size:13px;font-weight:600;color:var(--hosp);border-bottom:1px solid var(--line)}
 .grp-h.mid{color:var(--mid)}
 .grp-h.loc{color:var(--loc)}
+.grp-h.rx{color:var(--rx)}
+.grp-h[hidden]{display:none}
 .grp-h small{font-size:12px;font-weight:400;color:var(--muted)}
 .name-search{display:block;width:calc(100% - 40px);margin:10px 20px 0;font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff}
 .more{display:block;width:100%;padding:10px 20px;text-align:center;font-size:13px;font-weight:500;color:var(--loc)}
 .more[data-more="m"]{color:var(--mid)}
+.more[data-more="p"]{color:var(--rx)}
 
 /* hospital list */
 .h-row{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:12px;width:100%;padding:12px 20px;border-bottom:1px solid var(--line)}
@@ -68,6 +71,7 @@ a{color:var(--hosp)}
 .spec.mid{color:var(--mid)}
 .tier.mid{background:var(--mid-soft);color:var(--mid)}
 .spec.loc{color:var(--loc)}
+.spec.rx{color:var(--rx)}
 .tier.loc{background:var(--loc-soft);color:var(--loc)}
 .empty{padding:24px 20px;color:var(--muted)}
 
@@ -281,7 +285,7 @@ const PH = Object.fromEntries(P.map(p => [p.id, p]));
 const HN = Object.fromEntries(H.map(h => [h.no, h]));
 const REGIONS = ['전체','창원','진주','김해','양산','거제','사천','통영'];
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
-  groups:{ hosp:true, mid:true, loc:true }, lsel:null, lmk:[], lq:'', more:{ m:20, c:50 }, dots:null, wm:[], whSig:null };
+  groups:{ hosp:true, mid:true, loc:true }, lsel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null, wm:[], whSig:null };
 /* 병원별 약국 순번은 rank.json({ 병원 no: [1번 약국 id, 2번, 3번] })에 있고, 중소병원은 'm:중소병원 id' 키에
    ['p:약국 id' 또는 'l:로컬 약국 id', …]로 함께 둔다(중소병원 300m 안에는 두 종류 약국이 섞여 있어서).
    창고형약국 자동 판정을 직접 바꾼 곳은 wh.json({ 'p:약국 id' 또는 'l:로컬 약국 id': 1 또는 0 })에 있다
@@ -357,28 +361,38 @@ function renderRegions(){
   };
 }
 function visibleH(){ return H.filter(h => state.region === '전체' || h.r === state.region).sort((a, b) => b.tot - a.tot || b.sp - a.sp); }
-const STEP = { m: 20, c: 50 };   // 중소병원과 로컬 의원을 한 번에 더 보여 주는 개수
+const STEP = { m: 20, c: 50, p: 50 };   // 중소병원과 로컬 의원, 찾은 약국을 한 번에 더 보여 주는 개수
 function renderList(){
   const list = document.getElementById('list');
-  list.innerHTML = `<input type="search" class="name-search" id="nameSearch" placeholder="병원·의원 이름으로 찾기" aria-label="병원·의원 이름으로 찾기" value="${esc(state.lq)}">` +
+  list.innerHTML = `<input type="search" class="name-search" id="nameSearch" placeholder="병원·의원·약국 이름으로 찾기" aria-label="병원·의원·약국 이름으로 찾기" value="${esc(state.lq)}">` +
     (state.groups.hosp ? '<h3 class="grp-h">병원권<small id="hospHead"></small></h3><div id="hospRows"></div>' : '') +
     (state.groups.mid ? '<h3 class="grp-h mid">중소병원<small id="mHead"></small></h3><div id="mRows"></div>' : '') +
-    (state.groups.loc ? '<h3 class="grp-h loc">로컬 의원<small id="cHead"></small></h3><div id="cRows"></div>' : '');
+    (state.groups.loc ? '<h3 class="grp-h loc">로컬 의원<small id="cHead"></small></h3><div id="cRows"></div>' : '') +
+    '<h3 class="grp-h rx">약국<small id="pHead"></small></h3><div id="pRows"></div><p class="empty" id="noHit" hidden>찾는 곳이 없습니다.</p>';
   list.hidden = false;
   document.getElementById('detail').hidden = true;
-  renderHospRows(); renderPlaceRows();
+  renderRows();
   list.onclick = e => {
     const b = e.target.closest('.h-row, .more'); if (!b) return;
     if (b.dataset.no) select(+b.dataset.no);
     else if (b.dataset.id) selectPlace(b.dataset.kind, b.dataset.id);
-    else { state.more[b.dataset.more] += STEP[b.dataset.more]; renderPlaceRows(); }
+    else if (b.dataset.rx) showPh(b.dataset.rx);
+    else { state.more[b.dataset.more] += STEP[b.dataset.more]; renderRows(); }
   };
   const s = document.getElementById('nameSearch');
-  s.oninput = () => { state.lq = s.value; state.more = { ...STEP }; renderHospRows(); renderPlaceRows(); };
+  s.oninput = () => { state.lq = s.value; state.more = { ...STEP }; renderRows(); };
+}
+// 검색 중에는 찾은 곳이 없는 묶음을 제목째 숨긴다. 모두 숨었을 때만 '찾는 곳이 없습니다'를 띄운다
+const showGrp = (el, on) => { el.hidden = el.previousElementSibling.hidden = !on; };
+function renderRows(){
+  renderHospRows(); renderPlaceRows(); renderPhRows();
+  const none = document.getElementById('noHit'); if (!none) return;
+  none.hidden = !state.lq.trim() || [...document.querySelectorAll('#list .grp-h')].some(h => !h.hidden);
 }
 function renderHospRows(){
   const el = document.getElementById('hospRows'); if (!el) return;
   const q = state.lq.trim(), hs = visibleH().filter(h => !q || h.n.includes(q) || h.s.includes(q));
+  showGrp(el, !q || hs.length);
   document.getElementById('hospHead').textContent = `병원 ${hs.length}곳`;
   el.innerHTML = hs.length ? hs.map(h => `
     <button type="button" class="h-row" data-no="${h.no}">
@@ -387,7 +401,7 @@ function renderHospRows(){
         <span class="h-meta"><span class="tier ${tierClass(h.typ)}">${esc(h.typ)}</span>${esc(area(h))}</span>
         <span class="h-sub">의과전문의 ${h.sp}명${h.rx != null ? `, 병원 약사 ${h.rx}명` : ''}</span></span>
       <span class="h-ph"><b>${h.c500}</b><small>약국</small><small>약사 ${h.rx500}</small></span>
-    </button>`).join('') : `<p class="empty">${q ? '찾는 병원이 없습니다.' : '이 지역에는 해당 병원이 없습니다.'}</p>`;
+    </button>`).join('') : '<p class="empty">이 지역에는 해당 병원이 없습니다.</p>';
 }
 // 중소병원과 로컬 의원은 검색어가 없으면 지금 지도에 보이는 곳만, 의사 수가 많은 순으로 보여 준다
 function visiblePlaces(kind){
@@ -406,6 +420,7 @@ function renderPlaceRows(){
     const el = document.getElementById(kind + 'Rows'); if (!el) return;
     if (!LOC.basis) { el.innerHTML = `<p class="empty">${LOC.err ? '자료를 불러오지 못했습니다.' : '불러오는 중입니다.'}</p>`; return; }
     const xs = visiblePlaces(kind), n = state.more[kind], mid = kind === 'm';
+    showGrp(el, !q || xs.length);
     document.getElementById(kind + 'Head').textContent = `${q ? '찾은 곳' : state.map ? '지금 지도에 보이는 곳' : '이 지역'} ${xs.length}곳`;
     el.innerHTML = xs.length ? xs.slice(0, n).map(x => `
       <button type="button" class="h-row" data-kind="${kind}" data-id="${x.id}">
@@ -415,8 +430,38 @@ function renderPlaceRows(){
           <span class="h-sub">의과전문의 ${x.sp}명${x.o ? `, ${x.o.slice(0, 4)}년 개설` : ''}</span></span>
         <span class="h-ph"><b>${x.p100}</b><small>약국</small><small>100m</small></span>
       </button>`).join('') + (xs.length > n ? `<button type="button" class="more" data-more="${kind}">${Math.min(STEP[kind], xs.length - n)}곳 더 보기</button>` : '')
-      : `<p class="empty">${q ? '찾는 곳이 없습니다.' : '이 화면에는 없습니다. 지도를 옮기거나 축소해 보세요.'}</p>`;
+      : '<p class="empty">이 화면에는 없습니다. 지도를 옮기거나 축소해 보세요.</p>';
   });
+}
+// 약국은 검색할 때만 보여 준다. 병원권 약국은 병원권 묶음, 로컬 약국은 로컬 묶음을 켰을 때 찾는다.
+// key는 창고형약국과 같은 'p:약국 id'·'l:로컬 약국 id'다
+const nearH = p => p.h.reduce((a, b) => b[1] < a[1] ? b : a);
+function renderPhRows(){
+  const el = document.getElementById('pRows'); if (!el) return;
+  const q = state.lq.trim(), inR = r => state.region === '전체' || r === state.region;
+  const xs = !q ? [] : (state.groups.hosp ? P.filter(p => p.n.includes(q) && inR(HN[p.h[0][0]].r)).map(p => ({ p, key: 'p:' + p.id })) : [])
+    .concat(state.groups.loc ? LOC.p.filter(p => p.n.includes(q) && inR(p.r)).map(p => ({ p, key: 'l:' + p.id })) : []);
+  showGrp(el, xs.length);
+  const n = state.more.p;
+  document.getElementById('pHead').textContent = `찾은 곳 ${xs.length}곳`;
+  el.innerHTML = xs.slice(0, n).map(({ p, key }) => { const hosp = key[0] === 'p', z = hosp && nearH(p);
+    return `
+    <button type="button" class="h-row" data-rx="${key}">
+      <span class="spec rx"><b>${p.ps}</b><small>약사</small></span>
+      <span><span class="h-name">${esc(p.n)}${whTag(key)}${hosp ? '<span class="ph-grp">병원권</span>' : ''}</span>
+        <span class="h-meta">${esc(area(p))}</span>
+        <span class="h-sub">${hosp ? `${esc(HN[z[0]].s)}에서 ${z[1]}m` : `100m 안 의원 ${p.c100}곳`}${p.hs ? `, 한약사 ${p.hs}명` : ''}</span></span>
+    </button>`; }).join('') + (xs.length > n ? `<button type="button" class="more" data-more="p">${Math.min(STEP.p, xs.length - n)}곳 더 보기</button>` : '');
+}
+// 병원권 약국은 가장 가까운 병원 상세를 열어 그 약국을 가리키고, 로컬 약국은 상세가 없어 지도에서 확대해 정보 창을 띄운다
+function showPh(key){
+  const id = key.slice(2);
+  if (key[0] === 'p') { select(nearH(PH[id])[0]); focusPh(+id, false); return; }
+  clearSel();
+  if (!state.map) return;
+  const p = LOC.P[id];
+  state.map.setCenter(new naver.maps.LatLng(p.y, p.x)); state.map.setZoom(17);
+  focusLoc(id, false);
 }
 function renderDetail(no){
   const h = HN[no], items = phOf(no);
@@ -845,8 +890,8 @@ fetch('local.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.r
   const byId = xs => Object.fromEntries(xs.map(x => [x.id, x]));
   L.m.concat(L.c, L.p).forEach(x => { x.m = merc(x.x, x.y); });
   Object.assign(LOC, L, { M: byId(L.m), C: byId(L.c), P: byId(L.p) });
-  renderSummary(); renderPlaceRows(); addDots(); markWarehouses();
-}).catch(() => { LOC.err = true; renderSummary(); renderPlaceRows(); });
+  renderSummary(); renderRows(); addDots(); markWarehouses();
+}).catch(() => { LOC.err = true; renderSummary(); renderRows(); });
 
 /* ---------- map ---------- */
 function addDots(){
