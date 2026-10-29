@@ -182,6 +182,15 @@ a{color:var(--hosp)}
 .edit-bar span{flex-basis:100%}
 .edit-open{padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:12.5px;text-align:center}
 .edit-msg{display:block;margin-top:6px;font-size:12.5px;color:#7A4B00}
+.pw-dlg{width:min(340px,calc(100vw - 32px));border:1px solid var(--line);border-radius:10px;padding:18px 20px;color:var(--ink)}
+.pw-dlg::backdrop{background:rgba(30,42,39,.35)}
+.pw-dlg p{margin:0 0 10px;font-size:13.5px;line-height:1.5}
+.pw-dlg input{display:block;width:100%;margin:0 0 8px;font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:6px}
+.pw-dlg:not(.setup) .pw-setup,.pw-dlg.setup .pw-unlock{display:none}
+.pw-act{display:flex;align-items:center;gap:8px;margin-top:4px}
+.pw-act button{padding:5px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:13px;text-align:center}
+.pw-act button[value="ok"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.pw-act .pw-unlock{margin-left:auto;padding:5px 0;border:0;font-size:12.5px;color:var(--muted);text-decoration:underline}
 .memo{white-space:pre-wrap;font-size:13px;line-height:1.55;background:var(--ring-soft);border-radius:6px;padding:8px 10px;margin:10px 0 0}
 .memo-in{display:block;width:100%;margin:8px 0 0;font:inherit;font-size:13px;line-height:1.5;border:1px solid #E2C27A;border-radius:6px;padding:6px 8px;background:#FFFDF6;resize:vertical}
 .hm.has-memo .hm-dot{position:relative}
@@ -226,9 +235,16 @@ a{color:var(--hosp)}
       <label class="grp-opt mid"><input type="checkbox" id="optMid" checked><span><b>중소병원</b><small id="midCount">불러오는 중</small></span></label>
       <label class="grp-opt loc"><input type="checkbox" id="optLoc" checked><span><b>로컬</b><small id="locCount">불러오는 중</small></span></label>
     </div>
-    <label class="toggle"><input type="checkbox" id="optRings" checked> 모든 병원의 500m 반경 표시</label>
+    <label class="toggle"><input type="checkbox" id="optRings" checked> 병원권 500m 반경 표시</label>
     <label class="toggle"><input type="checkbox" id="optPh" checked> 약국 표시</label>
     <div id="editBar"></div>
+    <dialog id="pwDlg" class="pw-dlg"><form method="dialog">
+      <p id="pwMsg"></p>
+      <input id="pwTok" class="pw-setup" type="password" placeholder="GitHub 토큰" autocomplete="off">
+      <input id="pwIn" type="password" placeholder="편집 비밀번호" autocomplete="off" required>
+      <input id="pwIn2" class="pw-setup" type="password" placeholder="편집 비밀번호 한 번 더" autocomplete="off">
+      <div class="pw-act"><button value="ok">확인</button><button value="" formnovalidate>취소</button><button value="reset" class="pw-unlock" formnovalidate>토큰으로 새로 정하기</button></div>
+    </form></dialog>
   </div>
   <div class="scroll" id="scroll">
     <div id="list"></div>
@@ -276,10 +292,11 @@ const RANK_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-map/con
 const WH_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-map/contents/wh.json';
 const MEMO_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-memo/contents/memo.json';
 const RANK_KEY = 'gn-pharmacy-rank', WH_KEY = 'gn-pharmacy-wh', MEMO_KEY = 'gn-pharmacy-memo', TOKEN_KEY = 'gn-pharmacy-token';
-const store = {
-  get: k => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
-};
+const box = s => ({
+  get: k => { try { return s().getItem(k); } catch { return null; } },
+  set: (k, v) => { try { v == null ? s().removeItem(k) : s().setItem(k, v); } catch {} }
+});
+const store = box(() => localStorage), sess = box(() => sessionStorage);
 const loadDraft = (k = RANK_KEY) => { try { return JSON.parse(store.get(k)); } catch { return null; } };
 // memoPub이 null이면 메모를 읽지 못한 것이므로(토큰 없음·권한 없음) 메모 화면을 그리지 않는다
 state.pub = {}; state.rank = state.pub; state.edit = false; state.msg = '';
@@ -668,7 +685,68 @@ const dirtyMemo = () => !!state.memoPub && !same(state.memo, state.memoPub);
 const dirty = () => dirtyRank() || dirtyWh() || dirtyMemo();
 const auth = t => ({ Authorization: `Bearer ${t}`, Accept: 'application/vnd.github+json' });
 const b64 = s => { let t = ''; for (const x of new TextEncoder().encode(s)) t += String.fromCharCode(x); return btoa(t); };
-const askToken = () => (prompt('GitHub 토큰을 붙여넣어 주세요. 처음 한 번만 입력하면 이 브라우저에 저장됩니다.') || '').trim();
+/* GitHub 토큰은 편집 비밀번호로 암호화해 공개 key.json에 둔다(PBKDF2-SHA256 60만 번 → AES-GCM).
+   시크릿 창이나 함께 쓰는 PC에서도 비밀번호만 넣으면 되고, 푼 토큰은 그 탭(sessionStorage)에만 남긴다.
+   key.json이 없거나 '토큰으로 새로 정하기'를 누르면 토큰과 새 비밀번호를 받아 key.json을 새로 쓴다 */
+const KEY_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-map/contents/key.json', KEY_ITER = 600000;
+const EXPIRED = '넣어 둔 GitHub 토큰이 만료되었거나 맞지 않습니다. 다시 누른 뒤 "토큰으로 새로 정하기"에서 새 토큰을 넣어 주세요.';
+const toB64 = a => btoa(String.fromCharCode(...a)), fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function pwKey(pw, salt, iter){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, base,
+    { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function lockToken(token, pw){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await pwKey(pw, salt, KEY_ITER), new TextEncoder().encode(token));
+  return { iter: KEY_ITER, salt: toB64(salt), iv: toB64(iv), ct: toB64(new Uint8Array(ct)) };
+}
+async function unlockToken(k, pw){   // 비밀번호가 틀리면 AES-GCM 검증에서 예외가 난다
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(k.iv) }, await pwKey(pw, fromB64(k.salt), k.iter), fromB64(k.ct));
+  return new TextDecoder().decode(pt);
+}
+// 비밀번호 창을 띄우고 누른 버튼('ok', 'reset', 취소·Esc는 '')을 돌려준다. setup이면 토큰과 새 비밀번호를 두 번 받는다
+function askPw(setup, msg){
+  const d = document.getElementById('pwDlg'), pw = document.getElementById('pwIn');
+  d.classList.toggle('setup', setup);
+  document.getElementById('pwMsg').textContent = msg;
+  document.getElementById('pwTok').required = document.getElementById('pwIn2').required = setup;
+  pw.value = document.getElementById('pwIn2').value = '';
+  d.returnValue = '';
+  d.showModal();
+  return new Promise(res => d.addEventListener('close', () => res(d.returnValue), { once: true }));
+}
+async function getToken(){
+  const saved = sess.get(TOKEN_KEY);
+  if (saved) return saved;
+  const r = await fetch('key.json?t=' + Date.now(), { cache: 'no-store' }).catch(() => null);
+  if (!r) { state.msg = '인터넷 연결을 확인한 뒤 다시 눌러 주세요.'; return null; }
+  const k = r.ok ? await r.json() : null, tokIn = document.getElementById('pwTok');
+  let setup = !k, msg = k ? '편집 비밀번호를 입력해 주세요.' : '처음 한 번만 GitHub 토큰과 새 편집 비밀번호(10자 이상)를 정해 주세요.';
+  try {
+    for (;;) {
+      const v = await askPw(setup, msg);
+      if (!v) return null;
+      if (v === 'reset') { setup = true; msg = '새 GitHub 토큰과 새 편집 비밀번호(10자 이상)를 넣어 주세요.'; continue; }
+      const pw = document.getElementById('pwIn').value;
+      if (!setup) {
+        try { const t = await unlockToken(k, pw); sess.set(TOKEN_KEY, t); return t; }
+        catch { msg = '비밀번호가 맞지 않습니다. 다시 입력해 주세요.'; continue; }
+      }
+      if (pw.length < 10) { msg = '편집 비밀번호는 10자 이상으로 정해 주세요.'; continue; }
+      if (pw !== document.getElementById('pwIn2').value) { msg = '두 비밀번호가 다릅니다. 다시 입력해 주세요.'; continue; }
+      const tok = tokIn.value.trim();
+      try { await putFile(KEY_API, JSON.stringify(await lockToken(tok, pw)) + '\n', tok, '편집 비밀번호 설정'); }
+      catch (e) {
+        msg = e.message === '401' ? '토큰이 맞지 않거나 만료되었습니다. 토큰을 확인해 주세요.'
+          : e.message === '403' || e.message === '404' ? '토큰에 gn-pharmacy-map 저장소 Contents "Read and write" 권한이 없습니다.'
+          : '저장하지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요.';
+        continue;
+      }
+      sess.set(TOKEN_KEY, tok); return tok;
+    }
+  } finally { tokIn.value = ''; }
+}
 async function loadMemo(token){
   const r = await fetch(MEMO_API, { headers: { ...auth(token), Accept: 'application/vnd.github.raw+json' }, cache: 'no-store' });
   if (r.status === 401) throw new Error('401');
@@ -677,17 +755,16 @@ async function loadMemo(token){
   return { h: m.h || {}, p: m.p || {}, m: m.m || {}, c: m.c || {}, l: m.l || {} };
 }
 async function startEdit(){
-  const token = store.get(TOKEN_KEY) || askToken();
-  if (!token) return;
   state.msg = '';
+  const token = await getToken();
+  if (!token) return renderEditBar();
   try {
     const m = await loadMemo(token);
     if (m) state.memoPub = m;
     else state.msg = '메모를 불러오지 못했습니다. 토큰에 gn-pharmacy-memo 저장소 권한이 있는지 확인해 주세요. 순번은 고칠 수 있습니다.';
-    store.set(TOKEN_KEY, token);
   } catch (e) {
-    if (e.message === '401') store.set(TOKEN_KEY, null);
-    state.msg = e.message === '401' ? '토큰이 맞지 않습니다. 편집을 다시 눌러 토큰을 입력해 주세요.' : '인터넷 연결을 확인한 뒤 편집을 다시 눌러 주세요.';
+    if (e.message === '401') sess.set(TOKEN_KEY, null);
+    state.msg = e.message === '401' ? EXPIRED : '인터넷 연결을 확인한 뒤 편집을 다시 눌러 주세요.';
     return renderEditBar();
   }
   state.edit = true; state.rank = loadDraft() || state.pub; state.wh = loadDraft(WH_KEY) || state.whPub;
@@ -712,19 +789,18 @@ async function putFile(api, text, token, message){
 }
 async function saveAll(){
   if (!dirty()) { state.msg = '바뀐 내용이 없습니다.'; return renderEditBar(); }
-  const token = store.get(TOKEN_KEY) || askToken();
-  if (!token) return;
+  const token = await getToken();
+  if (!token) return renderEditBar();
   const rank = state.rank, wh = state.wh, memo = state.memo, dr = dirtyRank(), dw = dirtyWh(), dm = dirtyMemo();
   state.msg = '저장하는 중입니다…'; renderEditBar();
   try {
     if (dr) { await putFile(RANK_API, JSON.stringify(rank) + '\n', token, '약국 순번 수정'); state.pub = rank; store.set(RANK_KEY, null); }
     if (dw) { await putFile(WH_API, JSON.stringify(wh) + '\n', token, '창고형약국 지정 수정'); state.whPub = wh; store.set(WH_KEY, null); }
     if (dm) { await putFile(MEMO_API, JSON.stringify(memo, null, 1) + '\n', token, '메모 수정'); state.memoPub = memo; store.set(MEMO_KEY, null); }
-    store.set(TOKEN_KEY, token);
     state.msg = dr || dw ? '저장했습니다. 순번과 창고형 표시는 1~2분 뒤 모든 방문자에게 보입니다.' : '저장했습니다. 메모는 나에게만 보입니다.';
   } catch (e) {
-    if (e.message === '401') store.set(TOKEN_KEY, null);
-    state.msg = e.message === '401' ? '토큰이 맞지 않거나 만료되었습니다. 저장을 다시 눌러 새 토큰을 입력해 주세요.'
+    if (e.message === '401') sess.set(TOKEN_KEY, null);
+    state.msg = e.message === '401' ? EXPIRED
       : e.message === '403' || e.message === '404' ? '저장할 권한이 없습니다. 토큰의 두 저장소에 Contents "Read and write" 권한이 있는지 확인해 주세요.'
       : '저장하지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요.';
   }
@@ -768,9 +844,10 @@ fetch('wh.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json(
   if (!state.edit || !loadDraft(WH_KEY)) state.wh = w;
   refreshRank();
 }).catch(() => {});
-if (store.get(TOKEN_KEY)) loadMemo(store.get(TOKEN_KEY)).then(m => {
+store.set(TOKEN_KEY, null);   // 예전 방식으로 이 브라우저에 오래 남겨 둔 토큰을 지운다
+if (sess.get(TOKEN_KEY)) loadMemo(sess.get(TOKEN_KEY)).then(m => {
   if (m && !state.edit) { state.memoPub = state.memo = m; refreshRank(); }
-}).catch(e => { if (e.message === '401') store.set(TOKEN_KEY, null); });
+}).catch(e => { if (e.message === '401') sess.set(TOKEN_KEY, null); });
 fetch('local.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()).then(L => {
   const byId = xs => Object.fromEntries(xs.map(x => [x.id, x]));
   L.m.concat(L.c, L.p).forEach(x => { x.m = merc(x.x, x.y); });
