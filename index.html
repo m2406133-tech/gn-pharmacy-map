@@ -267,13 +267,15 @@ const REGIONS = ['전체','창원','진주','김해','양산','거제','사천',
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
   groups:{ hosp:true, mid:true, loc:true }, lsel:null, lmk:[], lq:'', more:{ m:20, c:50 }, dots:null, wm:[], whSig:null };
 /* 병원별 약국 순번은 rank.json({ 병원 no: [1번 약국 id, 2번, 3번] })에 있고,
+   창고형약국 자동 판정을 편집에서 직접 바꾼 곳은 wh.json({ 'p:약국 id' 또는 'l:로컬 약국 id': 1 또는 0 })에 있다
+   (1은 창고형으로, 0은 아닌 것으로). 둘 다 공개라서 모든 방문자에게 보인다.
    나만 보는 메모는 비공개 저장소의 memo.json({ h: { 병원 no: 글 }, p: { 약국 id: 글 }, m: { 중소병원 id: 글 },
-   c: { 로컬 의원 id: 글 }, l: { 로컬 약국 id: 글 }, w: { 'p:약국 id' 또는 'l:로컬 약국 id': 1 또는 0 } })에 있다.
-   w는 창고형약국 자동 판정을 편집에서 직접 바꾼 곳이다(1은 창고형으로, 0은 아닌 것으로).
-   '편집'에서 저장하면 GitHub API로 두 파일을 직접 고친다. 메모는 토큰이 있는 브라우저에서만 불러온다 */
+   c: { 로컬 의원 id: 글 }, l: { 로컬 약국 id: 글 } })에 있다.
+   '편집'에서 저장하면 GitHub API로 세 파일을 직접 고친다. 메모는 토큰이 있는 브라우저에서만 불러온다 */
 const RANK_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-map/contents/rank.json';
+const WH_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-map/contents/wh.json';
 const MEMO_API = 'https://api.github.com/repos/m2406133-tech/gn-pharmacy-memo/contents/memo.json';
-const RANK_KEY = 'gn-pharmacy-rank', MEMO_KEY = 'gn-pharmacy-memo', TOKEN_KEY = 'gn-pharmacy-token';
+const RANK_KEY = 'gn-pharmacy-rank', WH_KEY = 'gn-pharmacy-wh', MEMO_KEY = 'gn-pharmacy-memo', TOKEN_KEY = 'gn-pharmacy-token';
 const store = {
   get: k => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
@@ -281,6 +283,7 @@ const store = {
 const loadDraft = (k = RANK_KEY) => { try { return JSON.parse(store.get(k)); } catch { return null; } };
 // memoPub이 null이면 메모를 읽지 못한 것이므로(토큰 없음·권한 없음) 메모 화면을 그리지 않는다
 state.pub = {}; state.rank = state.pub; state.edit = false; state.msg = '';
+state.whPub = {}; state.wh = state.whPub;
 state.memoPub = null; state.memo = null;
 const rankNo = (no, id) => ((state.rank[no] || []).indexOf(id) + 1);
 
@@ -294,18 +297,17 @@ const phOf = no => P.filter(p => p.h.some(z => z[0] === no))
 const rankBtns = (no, id, label = '순번') => `<div class="rank-edit"><span>${label}</span>${[1, 2, 3].map(k =>
   `<button type="button" data-rank="${k}" data-ph="${id}" aria-pressed="${rankNo(no, id) === k}">${k}번</button>`).join('')}<button type="button" data-rank="0" data-ph="${id}">해제</button></div>`;
 /* 창고형약국: 2025년 이후 개설했고 약국영업면적(local.json의 ar·hp, 인허가 자료)이 50평(165㎡) 이상인 곳.
-   편집에서 직접 바꾼 곳(memo.w)이 자동 판정보다 우선한다. 메모처럼 비공개라서 토큰이 있는 브라우저에서만 보인다.
-   key는 'p:약국 id' 또는 'l:로컬 약국 id' */
+   편집에서 직접 바꾼 곳(wh.json)이 자동 판정보다 우선한다. key는 'p:약국 id' 또는 'l:로컬 약국 id' */
 const WH_SINCE = '2025-01-01', WH_AREA = 165;
 const whOf = key => { const [kind, id] = key.split(':'), p = kind === 'p' ? PH[id] : LOC.P[id];
   return { p, ar: kind === 'p' ? (LOC.hp || {})[id] : p && p.ar }; };
 const autoWh = key => { const { p, ar } = whOf(key); return !!p && p.o >= WH_SINCE && ar >= WH_AREA; };
-const isWh = key => !!state.memo && (key in state.memo.w ? !!state.memo.w[key] : autoWh(key));
+const isWh = key => key in state.wh ? !!state.wh[key] : autoWh(key);
 const whTag = key => { if (!isWh(key)) return '';
   const { p, ar } = whOf(key), why = ar ? `약국영업면적 ${ar}㎡(${Math.round(ar / 3.3058)}평), ${p.o} 개설` : '직접 지정';
   return `<span class="ph-wh" title="${why}">💩 창고형</span>`; };
-const whBtn = key => state.edit && state.memo
-  ? `<div class="rank-edit"><button type="button" data-wh="${key}" aria-pressed="${isWh(key)}">💩 창고형약국</button></div>` : '';
+const whBtn = key => state.edit
+  ?`<div class="rank-edit"><button type="button" data-wh="${key}" aria-pressed="${isWh(key)}">💩 창고형약국</button></div>` : '';
 
 /* 중소병원(m)과 로컬 의원(c)·약국(p)은 local.json(tools/build_local.py로 만든다)에 있다. 수천 곳이라 HTML 마커 대신
    캔버스 한 장에 점으로 그리고, 고른 병원·의원과 그 주변 로컬 약국만 HTML 마커로 띄운다 */
@@ -624,7 +626,7 @@ function markWarehouses(){
   if (!state.map) return;
   const showPh = document.getElementById('optPh').checked;
   const all = P.map(p => 'p:' + p.id).concat(LOC.p.map(p => 'l:' + p.id));
-  const keys = !state.memo || !showPh ? [] : all.filter(k => isWh(k) && (k[0] === 'p' ? state.groups.hosp : state.groups.loc));
+  const keys = !showPh ? [] : all.filter(k => isWh(k) && (k[0] === 'p' ? state.groups.hosp : state.groups.loc));
   document.getElementById('lgWh').hidden = !keys.length;
   const sig = keys.join();   // 로컬 자료가 늦게 와도 그때 키가 늘어나서 다시 그린다
   if (sig === state.whSig) return;
@@ -640,12 +642,12 @@ function markWarehouses(){
     return m;
   });
 }
-// 자동 판정과 같아지면 직접 바꾼 기록을 지워서 w에는 판정과 다른 곳만 남긴다
+// 자동 판정과 같아지면 직접 바꾼 기록을 지워서 wh.json에는 판정과 다른 곳만 남긴다
 function toggleWh(key){
-  const w = { ...state.memo.w }, next = !isWh(key);
+  const w = { ...state.wh }, next = !isWh(key);
   if (next === autoWh(key)) delete w[key]; else w[key] = next ? 1 : 0;
-  state.memo = { ...state.memo, w };
-  store.set(MEMO_KEY, JSON.stringify(state.memo));
+  state.wh = w;
+  store.set(WH_KEY, JSON.stringify(state.wh));
   state.msg = '';
   refreshRank();
   const [kind, id] = key.split(':');
@@ -661,8 +663,9 @@ function setMemo(kind, key, text){
 }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const dirtyRank = () => !same(state.rank, state.pub);
+const dirtyWh = () => !same(state.wh, state.whPub);
 const dirtyMemo = () => !!state.memoPub && !same(state.memo, state.memoPub);
-const dirty = () => dirtyRank() || dirtyMemo();
+const dirty = () => dirtyRank() || dirtyWh() || dirtyMemo();
 const auth = t => ({ Authorization: `Bearer ${t}`, Accept: 'application/vnd.github+json' });
 const b64 = s => { let t = ''; for (const x of new TextEncoder().encode(s)) t += String.fromCharCode(x); return btoa(t); };
 const askToken = () => (prompt('GitHub 토큰을 붙여넣어 주세요. 처음 한 번만 입력하면 이 브라우저에 저장됩니다.') || '').trim();
@@ -671,7 +674,7 @@ async function loadMemo(token){
   if (r.status === 401) throw new Error('401');
   if (!r.ok) return null;   // 비공개 저장소에 권한이 없으면 GitHub는 404를 준다
   const m = await r.json();
-  return { h: m.h || {}, p: m.p || {}, m: m.m || {}, c: m.c || {}, l: m.l || {}, w: m.w || {} };
+  return { h: m.h || {}, p: m.p || {}, m: m.m || {}, c: m.c || {}, l: m.l || {} };
 }
 async function startEdit(){
   const token = store.get(TOKEN_KEY) || askToken();
@@ -687,7 +690,7 @@ async function startEdit(){
     state.msg = e.message === '401' ? '토큰이 맞지 않습니다. 편집을 다시 눌러 토큰을 입력해 주세요.' : '인터넷 연결을 확인한 뒤 편집을 다시 눌러 주세요.';
     return renderEditBar();
   }
-  state.edit = true; state.rank = loadDraft() || state.pub;
+  state.edit = true; state.rank = loadDraft() || state.pub; state.wh = loadDraft(WH_KEY) || state.whPub;
   // 로컬 메모 칸(c, l)이 생기기 전에 저장된 임시본에도 빈 칸이 생기도록 공개본 위에 덮는다
   if (state.memoPub) state.memo = { ...state.memoPub, ...loadDraft(MEMO_KEY) };
   if (state.iw) state.iw.close();
@@ -695,8 +698,8 @@ async function startEdit(){
 }
 function endEdit(){
   if (dirty() && !confirm('저장하지 않은 내용이 있습니다. 저장하지 않고 편집을 끝낼까요?')) return;
-  store.set(RANK_KEY, null); store.set(MEMO_KEY, null);
-  state.edit = false; state.rank = state.pub; state.memo = state.memoPub; state.msg = '';
+  store.set(RANK_KEY, null); store.set(WH_KEY, null); store.set(MEMO_KEY, null);
+  state.edit = false; state.rank = state.pub; state.wh = state.whPub; state.memo = state.memoPub; state.msg = '';
   if (state.iw) state.iw.close();
   refreshRank();
 }
@@ -711,13 +714,14 @@ async function saveAll(){
   if (!dirty()) { state.msg = '바뀐 내용이 없습니다.'; return renderEditBar(); }
   const token = store.get(TOKEN_KEY) || askToken();
   if (!token) return;
-  const rank = state.rank, memo = state.memo, dr = dirtyRank(), dm = dirtyMemo();
+  const rank = state.rank, wh = state.wh, memo = state.memo, dr = dirtyRank(), dw = dirtyWh(), dm = dirtyMemo();
   state.msg = '저장하는 중입니다…'; renderEditBar();
   try {
     if (dr) { await putFile(RANK_API, JSON.stringify(rank) + '\n', token, '약국 순번 수정'); state.pub = rank; store.set(RANK_KEY, null); }
+    if (dw) { await putFile(WH_API, JSON.stringify(wh) + '\n', token, '창고형약국 지정 수정'); state.whPub = wh; store.set(WH_KEY, null); }
     if (dm) { await putFile(MEMO_API, JSON.stringify(memo, null, 1) + '\n', token, '메모 수정'); state.memoPub = memo; store.set(MEMO_KEY, null); }
     store.set(TOKEN_KEY, token);
-    state.msg = dr ? '저장했습니다. 순번은 1~2분 뒤 모든 방문자에게 보입니다.' : '저장했습니다. 메모는 나에게만 보입니다.';
+    state.msg = dr || dw ? '저장했습니다. 순번과 창고형 표시는 1~2분 뒤 모든 방문자에게 보입니다.' : '저장했습니다. 메모는 나에게만 보입니다.';
   } catch (e) {
     if (e.message === '401') store.set(TOKEN_KEY, null);
     state.msg = e.message === '401' ? '토큰이 맞지 않거나 만료되었습니다. 저장을 다시 눌러 새 토큰을 입력해 주세요.'
@@ -757,6 +761,11 @@ renderEditBar();
 fetch('rank.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(r => {
   state.pub = r;
   if (!state.edit || !loadDraft()) state.rank = r;
+  refreshRank();
+}).catch(() => {});
+fetch('wh.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(w => {
+  state.whPub = w;
+  if (!state.edit || !loadDraft(WH_KEY)) state.wh = w;
   refreshRank();
 }).catch(() => {});
 if (store.get(TOKEN_KEY)) loadMemo(store.get(TOKEN_KEY)).then(m => {
