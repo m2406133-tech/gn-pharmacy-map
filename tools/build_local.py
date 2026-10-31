@@ -1,6 +1,6 @@
 """심평원 '전국 병의원 및 약국 현황' 엑셀에서 중소병원과 로컬 의원·약국을 뽑아 local.json을 만든다.
 
-    python tools/build_local.py "<엑셀 폴더>" 2026-06-30 ["<지방행정 인허가 약국 CSV 또는 ZIP>"]
+    python tools/build_local.py "<엑셀 폴더>" 2026-06-30 ["<지방행정 인허가 약국 CSV 또는 ZIP>"] ["<영업시간 JSON>"]
 
 - 중소병원: 7개 시의 병원·종합병원 중 index.html의 병원권 28곳(의과전문의 15명 이상)에 들지 않은 곳.
   요양·정신·한방·치과병원은 넣지 않는다.
@@ -11,6 +11,8 @@
 - 인허가 약국 파일(행정안전부 전국약국표준데이터)을 주면 약국영업면적(㎡)을 이름과 도로명주소로 맞춰 붙인다.
   로컬 약국은 ar, 병원권 약국은 hp({ 약국 id: 면적 })에 넣는다. 창고형약국 판정에 쓴다.
   심평원 기준일 뒤에 문을 연 창고형약국은 인허가 자료로 로컬 약국에 더한다(lic: 1, id는 관리번호의 해시).
+- 영업시간 JSON(tools/fetch_hours.py로 받는다)을 주면 이름과 도로명주소, 없으면 이름과 좌표 100m로 맞춰 붙인다.
+  로컬 약국은 hr, 병원권 약국은 hh({ 약국 id: hr })에 넣는다. hr은 월~일, 공휴일 8칸을 쉼표로 이은 '0900-1730,…'이고 쉬는 날은 빈칸이다.
 표준 라이브러리만 쓴다.
 """
 import csv, hashlib, io, json, math, re, sys, zipfile
@@ -117,6 +119,18 @@ def licenses(path):
     return out
 
 
+def hours(path):
+    """fetch_hours.py가 받은 국립중앙의료원 약국 정보에서 요일별 영업시간을 읽는다. 시간이 하나도 없는 곳은 뺀다."""
+    out = []
+    for r in json.loads(Path(path).read_text(encoding='utf-8')):
+        days = [f"{r[f'dutyTime{i}s']}-{r[f'dutyTime{i}c']}" if r.get(f'dutyTime{i}s') and r.get(f'dutyTime{i}c') else ''
+                for i in range(1, 9)]
+        if any(days) and r.get('wgs84Lon'):
+            out.append({'n': r.get('dutyName', ''), 'a': r.get('dutyAddr', ''),
+                        'x': float(r['wgs84Lon']), 'y': float(r['wgs84Lat']), 'hr': ','.join(days)})
+    return out
+
+
 def license_of(p, by_key, by_name):
     """이름과 도로명주소가 같은 곳, 없으면 같은 시에 이름이 하나뿐인 곳."""
     lic = by_key.get((squash(p['n']), addr_key(p['a'])))
@@ -163,7 +177,7 @@ def base(r):
     }
 
 
-def main(folder, basis, license_file=None):
+def main(folder, basis, license_file=None, hours_file=None):
     html = (ROOT / 'index.html').read_text(encoding='utf-8')
     data = json.loads(re.search(r'const DATA = (\{.*?\});\n', html).group(1))
     hosp, hph = data['hosp'], data['ph']
@@ -251,6 +265,22 @@ def main(folder, basis, license_file=None):
         local += added
         print('인허가 자료로 더한 창고형약국: ' + (', '.join(f"{p['n']}({p['o']}, {p['ar']}㎡)" for p in added) or '없음'))
 
+    hh = {}
+    if hours_file:
+        hrs = hours(hours_file)
+        by_key = {(squash(h['n']), addr_key(h['a'])): h for h in hrs}
+        for group in (hph, local):
+            for p in group:
+                h = by_key.get((squash(p['n']), addr_key(p['a']))) or next(
+                    (h for h in hrs if squash(h['n']) == squash(p['n']) and gap(p, h) < 100), None)
+                if h is None:
+                    continue
+                if group is local:
+                    p['hr'] = h['hr']
+                else:
+                    hh[p['id']] = h['hr']
+        print(f"영업시간: 로컬 약국 {sum('hr' in p for p in local)}/{len(local)}곳, 병원권 약국 {len(hh)}/{len(hph)}곳 대조")
+
     allph = hph + local
     for c in clinics + mids:
         c['p100'] = sum(gap(c, p) <= 100 for p in allph)
@@ -262,6 +292,8 @@ def main(folder, basis, license_file=None):
     data = {'basis': basis, 'm': mids, 'c': clinics, 'p': local}
     if license_file:
         data['hp'] = hp
+    if hours_file:
+        data['hh'] = hh
 
     out = ROOT / 'local.json'
     out.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
@@ -274,4 +306,4 @@ def main(folder, basis, license_file=None):
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:4])
+    main(*sys.argv[1:5])

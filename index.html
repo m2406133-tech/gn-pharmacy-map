@@ -330,6 +330,18 @@ const isWh = key => key in state.wh ? !!state.wh[key] : autoWh(key);
 const whTag = key => { if (!isWh(key)) return '';
   const { p, ar } = whOf(key), why = ar ? `약국영업면적 ${ar}㎡(${Math.round(ar / 3.3058)}평), ${p.o} 개설` : '직접 지정';
   return `<span class="ph-wh" title="${why}">💩 창고형</span>`; };
+/* 영업시간: local.json의 hr(로컬 약국)·hh(병원권 약국), 국립중앙의료원 자료. 월~일, 공휴일 8칸을 쉼표로 이은
+   '0900-1730,…'이고 쉬는 날은 빈칸이다. 같은 시간인 요일끼리 묶어 '평일 09:00~17:30, 토 09:00~12:30, 일·공휴일 휴무'로 쓴다 */
+const DAYS = ['월', '화', '수', '목', '금', '토', '일', '공휴일'];
+const hhmm = t => { const h = +t.slice(0, 2); return `${h >= 24 ? '다음 날 ' : ''}${String(h % 24).padStart(2, '0')}:${t.slice(2)}`; };
+function hoursText(key){
+  const id = key.slice(2), hr = key[0] === 'p' ? (LOC.hh || {})[id] : LOC.P[id] && LOC.P[id].hr;
+  if (!hr) return '';
+  const gs = [];
+  hr.split(',').forEach((v, i) => { const t = v ? v.split('-').map(hhmm).join('~') : '휴무', g = gs.find(g => g.t === t);
+    if (g) g.d.push(DAYS[i]); else gs.push({ t, d: [DAYS[i]] }); });
+  return gs.map(g => `${g.d.join('·') === '월·화·수·목·금' ? '평일' : g.d.join('·')} ${g.t}`).join(', ');
+}
 
 /* 중소병원(m)과 로컬 의원(c)·약국(p)은 local.json(tools/build_local.py로 만든다)에 있다. 수천 곳이라 HTML 마커 대신
    캔버스 한 장에 점으로 그리고, 고른 병원·의원과 그 주변 로컬 약국만 HTML 마커로 띄운다 */
@@ -367,7 +379,7 @@ function visibleH(){ return H.filter(h => state.region === '전체' || h.r === s
 const STEP = { m: 20, c: 50, p: 50 };   // 중소병원과 로컬 의원, 찾은 약국을 한 번에 더 보여 주는 개수
 function renderList(){
   const list = document.getElementById('list');
-  list.innerHTML = `<input type="search" class="name-search" id="nameSearch" placeholder="병원·의원·약국 이름으로 찾기" aria-label="병원·의원·약국 이름으로 찾기" value="${esc(state.lq)}">` +
+  list.innerHTML = `<input type="search" class="name-search" id="nameSearch" placeholder="이름이나 약국 영업시간(17:30)으로 찾기" aria-label="병원·의원·약국 이름이나 약국 영업시간으로 찾기" value="${esc(state.lq)}">` +
     (state.groups.hosp ? '<h3 class="grp-h">병원권<small id="hospHead"></small></h3><div id="hospRows"></div>' : '') +
     (state.groups.mid ? '<h3 class="grp-h mid">중소병원<small id="mHead"></small></h3><div id="mRows"></div>' : '') +
     (state.groups.loc ? '<h3 class="grp-h loc">로컬 의원<small id="cHead"></small></h3><div id="cRows"></div>' : '') +
@@ -447,12 +459,15 @@ function linksOf(key){
   return hs.concat(near('m'), near('c'));
 }
 const linkName = z => z.kind === 'h' ? z.x.s : z.x.n;
-// 약국은 검색할 때만 보여 준다. 병원권 약국은 병원권 묶음, 로컬 약국은 로컬 묶음을 켰을 때 찾는다
+/* 약국은 검색할 때만 보여 준다. 병원권 약국은 병원권 묶음, 로컬 약국은 로컬 묶음을 켰을 때 찾는다.
+   띄어 쓴 낱말이 모두 이름이나 영업시간에 있어야 한다. '17:30 12:30'이면 17시 30분과 12시 30분에 닫는 요일이 있는 약국이다 */
 function renderPhRows(){
   const el = document.getElementById('pRows'); if (!el) return;
-  const q = state.lq.trim(), inR = r => state.region === '전체' || r === state.region;
-  const xs = !q ? [] : (state.groups.hosp ? P.filter(p => p.n.includes(q) && inR(HN[p.h[0][0]].r)).map(p => ({ p, key: 'p:' + p.id })) : [])
-    .concat(state.groups.loc ? LOC.p.filter(p => p.n.includes(q) && inR(p.r)).map(p => ({ p, key: 'l:' + p.id })) : []);
+  const q = state.lq.trim(), ws = q.split(/\s+/), inR = r => state.region === '전체' || r === state.region;
+  const hit = ({ p, key }) => { const s = p.n + ' ' + hoursText(key); return ws.every(w => s.includes(w)); };
+  const xs = !q ? [] : (state.groups.hosp ? P.filter(p => inR(HN[p.h[0][0]].r)).map(p => ({ p, key: 'p:' + p.id })).filter(hit) : [])
+    .concat(state.groups.loc ? LOC.p.filter(p => inR(p.r)).map(p => ({ p, key: 'l:' + p.id })).filter(hit) : []);
+  const byTime = /\d/.test(q);
   showGrp(el, xs.length);
   const n = state.more.p;
   document.getElementById('pHead').textContent = `찾은 곳 ${xs.length}곳`;
@@ -462,19 +477,21 @@ function renderPhRows(){
       <span class="spec rx"><b>${p.ps}</b><small>약사</small></span>
       <span><span class="h-name">${esc(p.n)}${whTag(key)}${key[0] === 'p' ? '<span class="ph-grp">병원권</span>' : ''}</span>
         <span class="h-meta">${esc(area(p))}</span>
-        <span class="h-sub">${z ? `${esc(linkName(z))}에서 ${z.d}m${ls.length > 1 ? ` 외 ${ls.length - 1}곳` : ''}` : '300m 안 병원·의원 없음'}</span></span>
+        <span class="h-sub">${z ? `${esc(linkName(z))}에서 ${z.d}m${ls.length > 1 ? ` 외 ${ls.length - 1}곳` : ''}` : '300m 안 병원·의원 없음'}</span>${byTime ? `
+        <span class="h-sub">${esc(hoursText(key))}</span>` : ''}</span>
     </button>`; }).join('') + (xs.length > n ? `<button type="button" class="more" data-more="p">${Math.min(STEP.p, xs.length - n)}곳 더 보기</button>` : '');
 }
 // 약국 상세. 연계된 병원·의원을 누르면 그 상세로 넘어간다
 function renderPh(key){
   const p = phByKey(key), hosp = key[0] === 'p', ls = linksOf(key);
-  const staff = [`약사 ${p.ps}명`, p.hs ? `한약사 ${p.hs}명` : ''].filter(Boolean).join(', ');
+  const staff = [`약사 ${p.ps}명`, p.hs ? `한약사 ${p.hs}명` : ''].filter(Boolean).join(', '), hrs = hoursText(key);
   const d = document.getElementById('detail');
   d.innerHTML = `
     <button type="button" class="back" id="back">목록으로</button>
     <h2>${esc(p.n)}${whTag(key)}</h2>
     <p class="addr"><span class="tier rx">${hosp ? '병원권 약국' : '로컬 약국'}</span>${esc(p.a)}</p>
     <p class="addr">${p.t ? esc(p.t) : '전화번호 없음'}<span style="margin-left:10px">${staff}</span><span style="margin-left:10px">개설 ${esc(p.o)}</span></p>
+    ${hrs ? `<p class="addr">영업시간 ${esc(hrs)}</p>` : ''}
     <div class="links">
       <a class="btn naver" href="${nmapUrl(hosp ? p.q : locQ(p))}" target="_blank" rel="noopener">네이버지도에서 약국 보기</a>
       <a class="btn" href="${nmapUrl(hosp ? p.qa : locQa(p))}" target="_blank" rel="noopener">주소로 보기</a>
