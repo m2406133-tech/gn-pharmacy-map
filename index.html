@@ -219,7 +219,13 @@ a{color:var(--hosp)}
   body{grid-template-columns:1fr;grid-template-rows:52dvh 1fr;overflow:hidden}
   #mapWrap{grid-row:1}
   #panel{grid-row:2;border-right:0;border-top:1px solid var(--line)}
-  .controls{padding:12px 16px 10px}
+  .controls{padding:12px 16px 10px;flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:14px;row-gap:8px}
+  /* 목록 자리를 넓히려고 지역은 한 줄 가로 스크롤, 토글과 편집은 한 줄로 모은다 */
+  .regions,.groups,#editBar:has(.edit-bar,.edit-msg){flex-basis:100%}
+  .regions{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+  .regions button{flex:none;padding:7px 12px}
+  .toggle{min-height:36px}
+  .edit-open{padding:8px 12px}
   .about{margin:8px 16px 16px}
   .grp-opt{gap:5px;padding:6px}
   .grp-opt small{font-size:11px}
