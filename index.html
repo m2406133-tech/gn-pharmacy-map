@@ -238,6 +238,11 @@ a{color:var(--hosp)}
   .name-search{width:calc(100% - 32px);margin:10px 16px 0}
   .legend{bottom:22px;left:8px}
 }
+/* 화면이 낮으면(확대 포함) 조작부가 목록 자리를 다 차지하므로 패널 전체를 함께 스크롤한다 */
+@media (max-width: 860px) and (max-height: 700px), (max-height: 480px){
+  #panel{overflow-y:auto}
+  .scroll{flex:none;overflow:visible}
+}
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
@@ -517,7 +522,7 @@ function renderPh(key){
       </button>`).join('') : '<p class="empty">300m 안에 병원·의원이 없습니다.</p>'}</div>`;
   document.getElementById('list').hidden = true;
   d.hidden = false;
-  document.getElementById('scroll').scrollTop = 0;
+  document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
   document.getElementById('back').onclick = () => { clearSel(); renderList(); };
   d.querySelector('.ph-links-list').onclick = e => {
     const b = e.target.closest('.h-row'); if (!b) return;
@@ -567,7 +572,7 @@ function renderDetail(no){
     <p class="note">약사 수는 약국이 심평원에 신고한 근무 약사 수입니다. 근무 형태(상근·비상근)는 구분되지 않습니다. 거리는 심평원 좌표 기준 직선거리입니다. 실제 걷는 거리와 출입구 위치에 따라 체감 거리가 다릅니다. 네이버지도 링크는 상호 검색이라 같은 이름의 다른 업소가 함께 나올 수 있으니 주소로 대조하세요.</p>`;
   document.getElementById('list').hidden = true;
   d.hidden = false;
-  document.getElementById('scroll').scrollTop = 0;
+  document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
   document.getElementById('back').onclick = () => { clearSel(); renderList(); fitRegion(); };
   d.querySelector('.ph-list').onclick = e => {
     const b = e.target.closest('[data-focus]'); if (b) focusPh(+b.dataset.focus, true);
@@ -613,7 +618,7 @@ function renderPlace(kind, id){
     <p class="note">의사·약사 수는 심평원 신고 인원입니다. 중소병원과 로컬 의원·약국은 ${LOC.basis.replace(/-/g, '.')} 기준이고, 병원권 약국은 ${DATA.basis.replace(/-/g, '.')} 기준이라 그사이 문을 열거나 닫은 곳은 다를 수 있습니다. 거리는 심평원 좌표 기준 직선거리입니다.</p>`;
   document.getElementById('list').hidden = true;
   d.hidden = false;
-  document.getElementById('scroll').scrollTop = 0;
+  document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
   document.getElementById('back').onclick = () => { clearSel(); renderList(); };
   d.querySelector('.ph-list').onclick = e => {
     const b = e.target.closest('[data-focus], [data-lfocus]'); if (!b) return;
