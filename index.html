@@ -404,6 +404,7 @@ function renderList(){
   renderRows();
   list.onclick = e => {
     const b = e.target.closest('.h-row, .more'); if (!b) return;
+    if (b.classList.contains('h-row')) state.ret = b.dataset.no ? `[data-no="${b.dataset.no}"]` : b.dataset.id ? `[data-id="${b.dataset.id}"]` : `[data-rx="${b.dataset.rx}"]`;
     if (b.dataset.no) select(+b.dataset.no);
     else if (b.dataset.id) selectPlace(b.dataset.kind, b.dataset.id);
     else if (b.dataset.rx) selectPh(b.dataset.rx);
@@ -412,6 +413,9 @@ function renderList(){
   const s = document.getElementById('nameSearch');
   s.oninput = () => { state.lq = s.value; state.more = { ...STEP }; renderRows(); };
 }
+// 상세를 열면 제목으로, 목록으로 돌아오면 열었던 행으로 초점을 옮긴다. 키보드·스크린리더 사용자가 처음부터 다시 찾아가지 않게 한다
+function focusDetail(d){ const h = d.querySelector('h2'); h.tabIndex = -1; h.focus({ preventScroll: true }); }
+function focusBack(){ (state.ret && document.querySelector(`#list .h-row${state.ret}`) || document.getElementById('nameSearch')).focus(); }
 // 검색 중에는 찾은 곳이 없는 묶음을 제목째 숨긴다. 모두 숨었을 때만 '찾는 곳이 없습니다'를 띄운다
 const showGrp = (el, on) => { el.hidden = el.previousElementSibling.hidden = !on; };
 function renderRows(){
@@ -523,7 +527,8 @@ function renderPh(key){
   document.getElementById('list').hidden = true;
   d.hidden = false;
   document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
-  document.getElementById('back').onclick = () => { clearSel(); renderList(); };
+  focusDetail(d);
+  document.getElementById('back').onclick = () => { clearSel(); renderList(); focusBack(); };
   d.querySelector('.ph-links-list').onclick = e => {
     const b = e.target.closest('.h-row'); if (!b) return;
     if (b.dataset.no) select(+b.dataset.no); else selectPlace(b.dataset.kind, b.dataset.id);
@@ -573,7 +578,8 @@ function renderDetail(no){
   document.getElementById('list').hidden = true;
   d.hidden = false;
   document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
-  document.getElementById('back').onclick = () => { clearSel(); renderList(); fitRegion(); };
+  focusDetail(d);
+  document.getElementById('back').onclick = () => { clearSel(); renderList(); focusBack(); fitRegion(); };
   d.querySelector('.ph-list').onclick = e => {
     const b = e.target.closest('[data-focus]'); if (b) focusPh(+b.dataset.focus, true);
   };
@@ -619,7 +625,8 @@ function renderPlace(kind, id){
   document.getElementById('list').hidden = true;
   d.hidden = false;
   document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
-  document.getElementById('back').onclick = () => { clearSel(); renderList(); };
+  focusDetail(d);
+  document.getElementById('back').onclick = () => { clearSel(); renderList(); focusBack(); };
   d.querySelector('.ph-list').onclick = e => {
     const b = e.target.closest('[data-focus], [data-lfocus]'); if (!b) return;
     if (b.dataset.focus) focusPh(+b.dataset.focus, true); else focusLoc(b.dataset.lfocus, true);
