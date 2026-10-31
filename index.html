@@ -43,7 +43,7 @@ a{color:var(--hosp)}
 .grp-opt b{display:block;font-size:13px;font-weight:600;color:var(--hosp);white-space:nowrap}
 .grp-opt.mid b{color:var(--mid)}
 .grp-opt.loc b{color:var(--loc)}
-.grp-opt small{display:block;font-size:11.5px;line-height:1.35;color:var(--muted)}
+.grp-opt small{display:block;font-size:11.5px;line-height:1.35;color:var(--muted);word-break:keep-all}
 .scroll{overflow-y:auto;flex:1;min-height:0}
 .grp-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0;padding:14px 20px 6px;font-size:13px;font-weight:600;color:var(--hosp);border-bottom:1px solid var(--line)}
 .grp-h.mid{color:var(--mid)}
@@ -368,9 +368,11 @@ function renderSummary(){
     `의과전문의 15명 이상 병원 ${H.length}곳과 반경 500m 안 약국 ${P.length}곳. 의사·약사 수는 건강보험심사평가원 신고 인원, ${DATA.basis.replace(/-/g,'.')} 기준.` +
     (LOC.basis ? ` 그보다 작은 중소병원 ${LOC.m.length}곳, 로컬 의원 ${LOC.c.length}곳과 약국 ${LOC.p.length}곳은 ${LOC.basis.replace(/-/g,'.')} 기준.` : '');
   const wait = LOC.err ? '불러오지 못했습니다' : '불러오는 중';
-  document.getElementById('hospCount').textContent = `병원 ${H.length} · 약국 ${P.length}`;
-  document.getElementById('midCount').textContent = LOC.basis ? `병원 ${LOC.m.length}` : wait;
-  document.getElementById('locCount').textContent = LOC.basis ? `의원 ${LOC.c.length} · 약국 ${LOC.p.length}` : wait;
+  // 이름과 숫자 사이는 줄을 바꾸지 않는 공백으로 묶어 "약국 / 186"처럼 갈라지지 않게 한다
+  const n = (k, v) => `${k} ${v.toLocaleString()}`;
+  document.getElementById('hospCount').textContent = `${n('병원', H.length)} · ${n('약국', P.length)}`;
+  document.getElementById('midCount').textContent = LOC.basis ? n('병원', LOC.m.length) : wait;
+  document.getElementById('locCount').textContent = LOC.basis ? `${n('의원', LOC.c.length)} · ${n('약국', LOC.p.length)}` : wait;
 }
 function renderRegions(){
   const el = document.getElementById('regions');
