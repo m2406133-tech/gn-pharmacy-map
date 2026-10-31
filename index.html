@@ -129,8 +129,10 @@ a{color:var(--hosp)}
 .notice p,.notice li{font-size:13.5px;margin:0 0 6px}
 .notice ol{padding-left:18px;margin:8px 0 0}
 .notice code{background:var(--tint);padding:1px 5px;border-radius:4px;font-size:12.5px}
-.legend{position:absolute;left:12px;bottom:28px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;display:flex;gap:14px;z-index:5}
+.legend{position:absolute;left:12px;bottom:28px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;z-index:5}
+.legend summary{font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;padding:2px 0}
 .legend div{display:flex;flex-direction:column;gap:4px}
+.legend .lg-body{flex-direction:row;gap:14px;margin:4px 0 2px}
 .legend b{font-size:11px;font-weight:600;color:var(--muted)}
 .legend span{display:flex;align-items:center;gap:7px}
 .legend span[hidden]{display:none}
@@ -262,7 +264,7 @@ a{color:var(--hosp)}
 <main id="mapWrap">
   <div id="map"></div>
   <div class="notice" id="notice" hidden></div>
-  <div class="legend" aria-hidden="true">
+  <details class="legend" id="legend" open><summary>범례</summary><div class="lg-body">
     <div><b>병원권</b>
       <span><i class="lg-h"></i>병원 (전문의 15명 이상)</span>
       <span><i class="lg-p"></i>약국</span>
@@ -274,7 +276,7 @@ a{color:var(--hosp)}
       <span><i class="lg-c"></i>의원</span>
       <span><i class="lg-lp"></i>약국</span>
       <span id="lgWh" hidden><i class="lg-w">💩</i>창고형약국</span></div>
-  </div>
+  </div></details>
 </main>
 
 <script>
@@ -1043,6 +1045,8 @@ function initMap(){
     zoomControl: true, zoomControlOptions: { position: naver.maps.Position.TOP_RIGHT }
   });
   state.map = map;
+  // 좁은 화면에서는 범례가 지도를 가리므로 접어서 시작한다
+  if (matchMedia('(max-width: 860px)').matches) document.getElementById('legend').open = false;
   state.iw = new naver.maps.InfoWindow({ content: '', borderColor: '#DCE3E0', borderWidth: 1, backgroundColor: '#fff',
     anchorSize: new naver.maps.Size(10, 8), pixelOffset: new naver.maps.Point(0, -8), maxWidth: 280 });
 
