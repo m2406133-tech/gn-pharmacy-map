@@ -1088,7 +1088,12 @@ function initMap(){
     if (p.kind === 'l') tapPh('l:' + p.id); else selectPlace(p.kind, p.id);
   });
   naver.maps.Event.addListener(map, 'idle', () => { if (!document.getElementById('list').hidden && !state.lq.trim()) renderPlaceRows(); });
-  markMemos(); fitRegion(); zoomClass(map.getZoom()); addDots();
+  markMemos(); zoomClass(map.getZoom()); addDots();
+  // 지도가 늦게 열렸다면 그 사이에 고른 곳을 지도에 다시 그린다. 고른 곳이 없을 때만 지역에 맞춘다
+  if (state.sel) select(state.sel);
+  else if (state.lsel) selectPlace(state.lsel.kind, state.lsel.id);
+  else if (state.psel) selectPh(state.psel);
+  else fitRegion();
 }
 
 /* ---------- options ---------- */
