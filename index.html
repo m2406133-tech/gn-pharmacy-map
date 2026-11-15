@@ -11,6 +11,8 @@
 :root{
   --paper:#FCFDFC; --ink:#1E2A27; --muted:#66746F; --line:#DCE3E0; --tint:#EEF3F1;
   --hosp:#24479A; --hosp-soft:#E7ECF7; --rx:#0F7A58; --rx-soft:#E3F1EB; --ring:#C98A00; --ring-soft:#FFF4D6;
+  --cross:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 1.3v7.4M1.3 5h7.4' stroke='%23fff' stroke-width='2.3'/%3E%3C/svg%3E");
+  --cross-hosp:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 1.3v7.4M1.3 5h7.4' stroke='%2324479A' stroke-width='2.3'/%3E%3C/svg%3E");
   --mid:#A8432A; --mid-soft:#F8E9E4; --loc:#5B45A8; --loc-soft:#EEEAF8;
   --panel-w:392px;
 }
@@ -138,32 +140,35 @@ a{color:var(--hosp)}
 .legend span{display:flex;align-items:center;gap:7px}
 .legend span[hidden]{display:none}
 .lg-w{font-style:normal;font-size:13px;line-height:1}
-.lg-m{width:10px;height:10px;border-radius:2px;background:var(--mid);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--mid)}
+.lg-m{width:16px;height:16px;border-radius:3px;background:var(--mid) var(--cross) center/60% no-repeat;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--mid)}
 .lg-c{width:10px;height:10px;border-radius:50%;background:var(--loc);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--loc)}
-.lg-lp{width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px var(--rx)}
-.lg-h{width:12px;height:12px;border-radius:50%;background:var(--hosp);border:2px solid #fff;box-shadow:0 0 0 1px var(--hosp)}
-.lg-p{width:10px;height:10px;border-radius:50%;background:var(--rx);border:2px solid #fff;box-shadow:0 0 0 1px var(--rx)}
+.lg-h{width:18px;height:18px;border-radius:50%;background:var(--hosp) var(--cross) center/60% no-repeat;border:2px solid #fff;box-shadow:0 0 0 1px var(--hosp)}
+.lg-p,.lg-mp,.lg-lp{width:20px;height:8.5px;border-radius:4.3px;border:.7px solid rgba(30,25,25,.6);background:linear-gradient(90deg,var(--c) 50%,#F6B80A 50%);transform:rotate(-50deg);margin:0 1px}
+.lg-p{--c:#24479A}.lg-mp{--c:#A8432A}.lg-lp{--c:#5B45A8}
 .lg-r{width:14px;height:14px;border-radius:50%;border:1.5px dashed var(--hosp)}
 .lg-n{font-style:normal;font-size:10.5px;font-weight:700;line-height:1;color:#fff;background:var(--ink);padding:2px 4px;border-radius:3px}
 
 /* markers (HTML icons) */
-.hm{position:relative;transform:translate(-9px,-9px);white-space:nowrap;cursor:pointer}
-.hm-dot{display:block;width:18px;height:18px;border-radius:50%;background:var(--hosp);border:3px solid #fff;box-shadow:0 0 0 1px var(--hosp),0 1px 4px rgba(0,0,0,.3)}
-.hm.t1 .hm-dot{width:22px;height:22px;margin:-2px;background:var(--hosp)}
-.hm.t3 .hm-dot{background:#fff;box-shadow:0 0 0 2px var(--hosp),0 1px 3px rgba(0,0,0,.25)}
-.hm-label{position:absolute;left:22px;top:-2px;background:#fff;border:1px solid var(--hosp);color:var(--hosp);font-size:12px;font-weight:600;padding:1px 7px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.hm{position:relative;transform:translate(-12px,-12px);white-space:nowrap;cursor:pointer}
+/* 병원은 흰 십자를 넣고(전문의 15명 이상의 병원은 흰 바탕에 파란 십자), 의원은 십자 없는 점이다 */
+.hm-dot{transform:scale(var(--pz,1));display:block;width:24px;height:24px;border-radius:50%;background:var(--hosp) var(--cross) center/62% no-repeat;border:3px solid #fff;box-shadow:0 0 0 1px var(--hosp),0 1px 4px rgba(0,0,0,.3)}
+.hm.t1 .hm-dot{width:32px;height:32px;margin:-4px}
+.hm.t3 .hm-dot{background:#fff var(--cross-hosp) center/62% no-repeat;box-shadow:0 0 0 2px var(--hosp),0 1px 3px rgba(0,0,0,.25)}
+.hm-label{position:absolute;left:calc(28px + (var(--pz,1) - 1) * 16px);top:0;background:#fff;border:1px solid var(--hosp);color:var(--hosp);font-size:12px;font-weight:600;padding:1px 7px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .hm-label b{margin-left:5px;font-weight:700}
 .far .hm-label{display:none}
 .hm.sel .hm-dot{box-shadow:0 0 0 3px var(--ring),0 1px 4px rgba(0,0,0,.3)}
 .hm.sel .hm-label{background:var(--hosp);color:#fff;display:block}
-.pm{width:12px;height:12px;transform:translate(-6px,-6px);border-radius:50%;background:var(--rx);border:2px solid #fff;box-shadow:0 0 0 1px var(--rx);cursor:pointer}
+/* 약국: 약사 수만큼 캡슐을 비스듬히 나란히 놓는다(pillSvg). 한쪽 색은 시설 색(병원권 파랑, 중소병원 벽돌, 로컬 보라), 반대쪽은 노랑이다.
+   캡슐 색이 파랑·보라라서 선택 윤곽은 어두운 먹색이다 */
+.pm{width:max-content;transform:translate(-50%,-50%);line-height:0;cursor:pointer}
+.pm svg{display:block;overflow:visible;transform:scale(var(--pz,1))}   /* --pz: 확대할수록 커지는 배율(pillZoom) */
+.pm-rank{margin-left:calc((var(--pz,1) - 1) * 14px)}
 .has-sel .pm{opacity:.28}
-.has-sel .pm.in{opacity:1;width:14px;height:14px;transform:translate(-7px,-7px)}
-.pm.focus{background:var(--ring);box-shadow:0 0 0 2px var(--ring);opacity:1}
+.has-sel .pm.in{opacity:1;transform:translate(-50%,-50%) scale(1.25)}
+.pm.focus{opacity:1;transform:translate(-50%,-50%) scale(1.25)}
+.pm.focus svg{filter:drop-shadow(0 0 1px var(--ink)) drop-shadow(0 0 2px var(--ink)) drop-shadow(0 0 3px var(--ink))}
 .hide-ph .pm{display:none!important}
-.pm span{display:none}
-.has-sel .pm.in{width:20px;height:20px;transform:translate(-10px,-10px);display:flex;align-items:center;justify-content:center}
-.has-sel .pm.in span{display:block;color:#fff;font-size:11px;font-weight:700;line-height:1}
 .pm-rank{display:none;position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);background:var(--ink);color:#fff;font-size:11.5px;font-weight:700;line-height:1;padding:3px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .has-sel .pm.rk .pm-rank{display:block}
 .ph-staff{display:inline-block;font-size:12px;font-weight:600;color:var(--rx);background:var(--rx-soft);padding:0 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
@@ -174,13 +179,9 @@ a{color:var(--hosp)}
 /* 로컬: 캔버스 점, 고른 의원과 그 주변 로컬 약국만 HTML 마커 */
 .has-sel .loc-layer{opacity:.35}
 .hide-hosp .hm,.hide-hosp .pm:not(.lp){display:none!important}
-.pm.lp{background:#fff;box-shadow:0 0 0 1.5px var(--rx)}
-.has-sel .pm.lp.in span{color:var(--rx)}
-.pm.lp.focus{background:var(--ring);box-shadow:0 0 0 2px var(--ring)}
-.has-sel .pm.lp.focus span{color:#fff}
-.cm .hm-dot{background:var(--loc);box-shadow:0 0 0 1px var(--loc),0 1px 4px rgba(0,0,0,.3)}
+.cm .hm-dot{background:var(--loc);width:16px;height:16px;margin:4px;box-shadow:0 0 0 1px var(--loc),0 1px 4px rgba(0,0,0,.3)}
 .hm.cm.sel .hm-label{background:var(--loc);border-color:var(--loc)}
-.mm .hm-dot{border-radius:4px;background:var(--mid);box-shadow:0 0 0 1px var(--mid),0 1px 4px rgba(0,0,0,.3)}
+.mm .hm-dot{border-radius:4px;background:var(--mid) var(--cross) center/62% no-repeat;box-shadow:0 0 0 1px var(--mid),0 1px 4px rgba(0,0,0,.3)}
 .hm.mm.sel .hm-label{background:var(--mid);border-color:var(--mid)}
 .ph-rank{display:inline-block;font-size:12px;font-weight:700;color:#fff;background:var(--ink);padding:0 6px;border-radius:3px;margin-right:6px;vertical-align:1px}
 .rank-edit{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted)}
@@ -280,11 +281,12 @@ a{color:var(--hosp)}
   <details class="legend" id="legend" open><summary>범례</summary><div class="lg-body">
     <div><b>병원권</b>
       <span><i class="lg-h"></i>병원 (전문의 15명 이상)</span>
-      <span><i class="lg-p"></i>약국</span>
+      <span><i class="lg-p"></i>약국 (캡슐 1개 = 약사 1명)</span>
       <span><i class="lg-r"></i>병원 반경 500m</span>
       <span><i class="lg-n">1번</i>접근성 순번</span></div>
     <div><b>중소병원</b>
       <span><i class="lg-m"></i>병원 (전문의 15명 미만)</span>
+      <span><i class="lg-mp"></i>약국 (300m 안)</span>
       <b>로컬</b>
       <span><i class="lg-c"></i>의원</span>
       <span><i class="lg-lp"></i>약국</span>
@@ -378,8 +380,9 @@ function renderSummary(){
   // 이름과 숫자 사이는 줄을 바꾸지 않는 공백으로 묶어 "약국 / 186"처럼 갈라지지 않게 한다
   const n = (k, v) => `${k} ${v.toLocaleString()}`;
   document.getElementById('hospCount').textContent = `${n('병원', H.length)} · ${n('약국', P.length)}`;
-  document.getElementById('midCount').textContent = LOC.basis ? n('병원', LOC.m.length) : wait;
-  document.getElementById('locCount').textContent = LOC.basis ? `${n('의원', LOC.c.length)} · ${n('약국', LOC.p.length)}` : wait;
+  const mp = LOC.p.filter(p => p.pk === 'm').length;   // 중소병원 300m 안 약국은 중소병원 묶음에 센다
+  document.getElementById('midCount').textContent = LOC.basis ? `${n('병원', LOC.m.length)} · ${n('약국', mp)}` : wait;
+  document.getElementById('locCount').textContent = LOC.basis ? `${n('의원', LOC.c.length)} · ${n('약국', LOC.p.length - mp)}` : wait;
 }
 function renderRegions(){
   const el = document.getElementById('regions');
@@ -491,7 +494,7 @@ function renderPhRows(){
   const q = state.lq.trim(), ws = q.split(/\s+/), inR = r => state.region === '전체' || r === state.region;
   const hit = ({ p, key }) => { const s = p.n + ' ' + hoursText(key); return ws.every(w => s.includes(w)); };
   const xs = !q ? [] : (state.groups.hosp ? P.filter(p => inR(HN[p.h[0][0]].r)).map(p => ({ p, key: 'p:' + p.id })).filter(hit) : [])
-    .concat(state.groups.loc ? LOC.p.filter(p => inR(p.r)).map(p => ({ p, key: 'l:' + p.id })).filter(hit) : []);
+    .concat(LOC.p.filter(p => locPhOn(p) && inR(p.r)).map(p => ({ p, key: 'l:' + p.id })).filter(hit));
   const byTime = /\d/.test(q);
   showGrp(el, xs.length);
   const n = state.more.p;
@@ -661,10 +664,72 @@ function select(no){
   markRanks(no);
   addSelRings(HN[no], [500, 300, 100]);
 }
+// 캡슐 한쪽 색은 약국이 딸린 시설 마커의 색을 따른다. h: 병원권, m: 중소병원 300m 안, l: 로컬(나머지). PILL_D는 윤곽선 색이다
+const PILL_C = { h: '#24479A', m: '#A8432A', l: '#5B45A8' }, PILL_D = { h: '#142750', m: '#5C251A', l: '#32265C' };
+const PILL_Y = '#F6B80A', PILL_ROT = -50, PILL_S = 1.45;   // PILL_S: 캡슐 크기 배율(모양, 간격, 클릭 범위가 함께 커진다)
+// 확대 17보다 더 확대하면 지도 건물이 커지는 만큼 캡슐도 단계마다 1.2배씩 키운다(최대 2.1배). 그 아래는 그대로다
+const pillZoom = z => z > 17 ? Math.min(1.2 ** (z - 17), 2.1) : 1;
+// 약국이 어느 종류에 속하는지(pk)를 정한다. 병원권 약국이면 h, 아니면 중소병원 300m 안이면 m, 그 밖에는 l이다(linksOf와 같은 우선순위)
+P.forEach(p => { p.pk = 'h'; });
+// 중소병원 300m 안 약국(pk 'm')은 '중소병원' 묶음, 나머지 로컬 약국(pk 'l')은 '로컬' 묶음을 켰을 때 보인다
+const locPhOn = p => state.groups[p.pk === 'm' ? 'mid' : 'loc'];
+function assignKind(list, mids){
+  const kx = 111320 * Math.cos(35.3 * Math.PI / 180), ky = 110574;
+  list.forEach(p => { p.pk = mids.some(q => Math.hypot((p.x - q.x) * kx, (p.y - q.y) * ky) <= 300) ? 'm' : 'l'; });
+}
+// 약사 수(한 명 이상으로 본다, 최대 8)만큼 캡슐(길이 15, 두께 6.4)을 기울여 한 줄로 나란히 놓는다.
+// 한 줄에 4개까지, 캡슐은 오른쪽으로 8.2px씩 옮겨 이웃과 윤곽이 거의 맞닿고, 5개째부터 다음 줄(17px 아래)이다.
+// 좌표는 전체 묶음의 가운데를 (0, 0)으로 한 값이고, hw·hh는 묶음의 가로·세로 반지름이다
+const pillMemo = {};
+function pillLayout(ps){
+  const n = Math.min(Math.max(ps || 1, 1), 8);
+  if (pillMemo[n]) return pillMemo[n];
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / 4), c = i % 4, k = Math.min(4, n - r * 4);
+    pts.push([(c * 8.2 + (4 - k) * 4.1) * PILL_S, r * 17 * PILL_S]);
+  }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  return pillMemo[n] = { n, pts: pts.map(p => [p[0] - cx, p[1] - cy]),
+    hw: (Math.max(...xs) - Math.min(...xs)) / 2 + 9 * PILL_S, hh: (Math.max(...ys) - Math.min(...ys)) / 2 + 10 * PILL_S };
+}
+// 가까이 붙은 약국은 기울기를 서로 반대로 해 구분한다. tilt는 -1(기본)과 1(좌우를 뒤집은 기울기)이다.
+// 40m 안에 이미 정한 약국이 있으면 그 이웃들과 반대쪽을 고르고, 없으면 기본이다. fixed는 이미 정해 둔 약국들이다
+const TILT_M = 40;
+function assignTilt(list, fixed){
+  const kx = 111320 * Math.cos(35.3 * Math.PI / 180), ky = 110574, done = fixed.slice();
+  list.forEach(p => {
+    let sum = 0, nd = Infinity, near = null;
+    done.forEach(q => {
+      const d = Math.hypot((p.x - q.x) * kx, (p.y - q.y) * ky);
+      if (d > TILT_M) return;
+      sum += q.tilt;
+      if (d < nd) { nd = d; near = q; }
+    });
+    p.tilt = sum > 0 ? -1 : sum < 0 ? 1 : near ? -near.tilt : -1;
+    done.push(p);
+  });
+}
+assignTilt(P, []);
+// poi.json(tools/fetch_poi.py가 네이버 검색 API로 만든다)은 네이버 지도가 아이콘을 찍는 업소별 위치다. 심평원 좌표는 건물 단위라서
+// 같은 건물의 의원과 약국이 한 점에 겹치므로, poi.json에 있는 업소는 그 위치를 쓰고 없거나 못 읽으면 심평원 좌표를 그대로 쓴다.
+// 키는 'h:병원 no'·'p:약국 id'·'m:중소병원 id'·'c:의원 id'·'l:로컬 약국 id'이고 값은 [경도, 위도]다
+const POI_READY = fetch('poi.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({})).then(poi => {
+  H.forEach(h => { const v = poi['h:' + h.no]; if (v) { h.x = v[0]; h.y = v[1]; } });
+  P.forEach(p => { const v = poi['p:' + p.id]; if (v) { p.x = v[0]; p.y = v[1]; } });
+  assignTilt(P, []);   // 좌표가 바뀌었으니 가까운 약국끼리 기울기를 다시 정한다
+  return poi;
+});
+function pillSvg(ps, tilt, pk){
+  const L = pillLayout(ps), W = L.hw * 2, H = L.hh * 2, c = PILL_C[pk || 'l'], k = PILL_D[pk || 'l'];
+  const g = L.pts.map(([x, y]) => `<g transform="translate(${L.hw + x} ${L.hh + y}) scale(${PILL_S})${tilt > 0 ? ' scale(-1 1)' : ''} rotate(${PILL_ROT})"><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="#fff" stroke="#fff" stroke-width="2.4"/><path d="M0 -3.2H-4.3A3.2 3.2 0 0 0 -4.3 3.2H0Z" fill="${c}"/><path d="M0 -3.2H4.3A3.2 3.2 0 0 1 4.3 3.2H0Z" fill="${PILL_Y}"/><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="none" stroke="${k}" stroke-width=".7"/></g>`).join('');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${g}</svg>`;
+}
 function addLocMarker(kind, x){
   const el = document.createElement('div');
   if (kind !== 'l') { el.className = `hm sel ${kind === 'm' ? 'mm' : 'cm'}`; el.innerHTML = `<span class="hm-dot"></span><span class="hm-label">${esc(x.n)}<b>의사 ${x.d}</b></span>`; }
-  else { el.className = 'pm lp in'; el.title = `${x.n} (약사 ${x.ps}명${x.hs ? `, 한약사 ${x.hs}명` : ''})`; el.innerHTML = `<span>${x.ps || (x.hs ? '한' : '')}</span><b class="pm-rank"></b>`; }
+  else { el.className = 'pm lp in'; el.title = `${x.n} (약사 ${x.ps}명${x.hs ? `, 한약사 ${x.hs}명` : ''})`; el.innerHTML = `${pillSvg(x.ps, x.tilt, x.pk)}<b class="pm-rank"></b>`; }
   const m = new naver.maps.Marker({ map: state.map, position: new naver.maps.LatLng(x.y, x.x), zIndex: kind === 'l' ? 70 : 1000,
     icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
   if (kind === 'l') naver.maps.Event.addListener(m, 'click', () => focusLoc(x.id, false));
@@ -693,6 +758,8 @@ function selectPh(key){
   if (key[0] === 'p') state.pm[id].el.classList.add('focus');
   else { addLocMarker('l', p); state.lmk[0].el.classList.add('focus'); }
   addSelRings(p, key[0] === 'p' ? [500, 300, 100] : [300, 100]);
+  // 지도에서도 약국 이름·약사 수·전화를 바로 볼 수 있게 정보창을 연다
+  if (key[0] === 'p') openPhInfo(id); else focusLoc(id, false);
 }
 // 지도에서 약국을 눌렀을 때: 병원·의원 상세를 보고 있으면 지금처럼 그 안에서 약국을 가리키고(순번 편집), 아니면 약국 상세를 연다
 function tapPh(key){
@@ -795,7 +862,7 @@ function markWarehouses(){
   if (!state.map) return;
   const showPh = document.getElementById('optPh').checked;
   const all = P.map(p => 'p:' + p.id).concat(LOC.p.map(p => 'l:' + p.id));
-  const keys = !showPh ? [] : all.filter(k => isWh(k) && (k[0] === 'p' ? state.groups.hosp : state.groups.loc));
+  const keys = !showPh ? [] : all.filter(k => isWh(k) && (k[0] === 'p' ? state.groups.hosp : locPhOn(LOC.P[k.slice(2)])));
   document.getElementById('lgWh').hidden = !keys.length;
   const sig = keys.join();   // 로컬 자료가 늦게 와도 그때 키가 늘어나서 다시 그린다
   if (sig === state.whSig) return;
@@ -985,9 +1052,12 @@ store.set(TOKEN_KEY, null);   // 예전 방식으로 이 브라우저에 오래 
 if (sess.get(TOKEN_KEY)) loadMemo(sess.get(TOKEN_KEY)).then(m => {
   if (m && !state.edit) { state.memoPub = state.memo = m; refreshRank(); }
 }).catch(e => { if (e.message === '401') sess.set(TOKEN_KEY, null); });
-fetch('local.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()).then(L => {
+Promise.all([fetch('local.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()), POI_READY]).then(([L, poi]) => {
   const byId = xs => Object.fromEntries(xs.map(x => [x.id, x]));
+  [['m', 'm'], ['c', 'c'], ['p', 'l']].forEach(([k, pre]) => L[k].forEach(x => { const v = poi[pre + ':' + x.id]; if (v) { x.x = v[0]; x.y = v[1]; } }));
   L.m.concat(L.c, L.p).forEach(x => { x.m = merc(x.x, x.y); });
+  assignTilt(L.p, P);   // 병원권 약국과 가까운 로컬 약국도 그 약국과 반대로 기울인다
+  assignKind(L.p, L.m);
   Object.assign(LOC, L, { M: byId(L.m), C: byId(L.c), P: byId(L.p) });
   renderSummary(); renderRows(); addDots(); markWarehouses();
 }).catch(() => { LOC.err = true; renderSummary(); renderRows(); });
@@ -1016,25 +1086,48 @@ function addDots(){
       Object.assign(this.cv.style, { left: a.x - s.width / 2 + 'px', top: a.y - s.height / 2 + 'px', width: W + 'px', height: Hh + 'px' });
       if (this.cv.width !== W * dpr || this.cv.height !== Hh * dpr) { this.cv.width = W * dpr; this.cv.height = Hh * dpr; }
       const g = this.cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, Hh);
-      const zoom = map.getZoom(), r = zoom >= 15 ? 5 : zoom >= 13 ? 4 : zoom >= 11 ? 2.6 : 1.8;
-      const lp = new Path2D(), cl = new Path2D(), md = new Path2D(), memo = new Path2D(), M = state.memo;
+      const zoom = map.getZoom(), r = (zoom >= 15 ? 6.5 : zoom >= 13 ? 4.8 : zoom >= 11 ? 2.8 : 1.8) * pillZoom(zoom);   // 확대할수록 의원·중소병원·약국 점의 기본 반지름(확대 17 이후에는 pillZoom만큼 더 커진다)
+      const lp = { m: new Path2D(), l: new Path2D() }, cl = new Path2D(), md = new Path2D(), mx = new Path2D(), memo = new Path2D(), M = state.memo;
       this.pts = [];
       const put = (x, kind, rad, path) => {
         const px = this.px(x.m), py = this.py(x.m);
         if (px < -10 || py < -10 || px > W + 10 || py > Hh + 10) return;
-        if (kind === 'm') path.rect(px - rad, py - rad, rad * 2, rad * 2);   // 중소병원은 네모
+        if (kind === 'm') {   // 중소병원은 네모, 확대하면 흰 십자를 넣는다
+          path.rect(px - rad, py - rad, rad * 2, rad * 2);
+          if (zoom >= 13) { const a = rad * .55; mx.moveTo(px - a, py); mx.lineTo(px + a, py); mx.moveTo(px, py - a); mx.lineTo(px, py + a); }
+        }
         else { path.moveTo(px + rad, py); path.arc(px, py, rad, 0, 7); }
         this.pts.push({ px, py, rad, kind, id: x.id });
         if (M && M[kind][x.id]) { memo.moveTo(px + rad + 3, py - rad); memo.arc(px + rad, py - rad, 3, 0, 7); }
       };
-      if (state.groups.loc && document.getElementById('optPh').checked) LOC.p.forEach(p => put(p, 'l', r * .85, lp));
+      // 확대(15 이상)하면 로컬 약국도 약사 수만큼 캡슐로 그리고, 그보다 멀리서는 점으로 그린다
+      const pills = [];
+      if (document.getElementById('optPh').checked) LOC.p.forEach(p => {
+        if (!locPhOn(p)) return;
+        if (zoom < 15) return put(p, 'l', r * .85, lp[p.pk || 'l']);
+        const zs = pillZoom(zoom);
+        const px = this.px(p.m), py = this.py(p.m);
+        if (px < -20 || py < -20 || px > W + 20 || py > Hh + 20) return;
+        const L = pillLayout(p.ps), half = L.hw * zs;
+        pills.push([px, py, L, p.tilt, p.pk || 'l', zs]); this.pts.push({ px, py, rad: half, kind: 'l', id: p.id, pl: { L, t: p.tilt, zs } });
+        if (M && M.l[p.id]) { memo.moveTo(px + half + 3, py - L.hh * zs); memo.arc(px + half, py - L.hh * zs, 3, 0, 7); }
+      });
       if (state.groups.loc) LOC.c.forEach(c => put(c, 'c', r, cl));
       if (state.groups.mid) LOC.m.forEach(x => put(x, 'm', r * 1.25, md));
       g.lineWidth = zoom >= 11 ? 1.5 : 1;
-      g.fillStyle = '#fff'; g.strokeStyle = '#0F7A58'; g.fill(lp); g.stroke(lp);
+      ['m', 'l'].forEach(k => { g.fillStyle = '#fff'; g.strokeStyle = PILL_C[k]; g.fill(lp[k]); g.stroke(lp[k]); });
       g.fillStyle = '#5B45A8'; g.strokeStyle = '#fff'; g.fill(cl); if (zoom >= 11) g.stroke(cl);
       g.fillStyle = '#A8432A'; g.fill(md); if (zoom >= 11) g.stroke(md);
+      if (zoom >= 13) { g.save(); g.strokeStyle = '#fff'; g.lineWidth = zoom >= 15 ? 2 : 1.5; g.stroke(mx); g.restore(); }
       g.fillStyle = '#C98A00'; g.fill(memo);
+      pills.forEach(([x, y, L, t, pk, zs]) => L.pts.forEach(([dx, dy]) => {
+        g.save(); g.translate(x + dx * zs, y + dy * zs); g.scale(PILL_S * zs, PILL_S * zs); if (t > 0) g.scale(-1, 1); g.rotate(PILL_ROT * Math.PI / 180);
+        g.beginPath(); g.roundRect(-7.5, -3.2, 15, 6.4, 3.2); g.lineWidth = 2.4; g.strokeStyle = '#fff'; g.stroke(); g.fillStyle = '#fff'; g.fill();
+        g.beginPath(); g.roundRect(-7.5, -3.2, 7.5, 6.4, [3.2, 0, 0, 3.2]); g.fillStyle = PILL_C[pk]; g.fill();
+        g.beginPath(); g.roundRect(0, -3.2, 7.5, 6.4, [0, 3.2, 3.2, 0]); g.fillStyle = PILL_Y; g.fill();
+        g.beginPath(); g.roundRect(-7.5, -3.2, 15, 6.4, 3.2); g.lineWidth = .7; g.strokeStyle = PILL_D[pk]; g.stroke();
+        g.restore();
+      }));
     }
     px(m){ return (m[0] - this.m0[0]) * this.kx + this.w / 2; }
     py(m){ return (m[1] - this.m0[1]) * this.ky + this.h / 2; }
@@ -1042,10 +1135,20 @@ function addDots(){
     hit(coord){
       if (!this.pts) return null;
       const m = merc(coord.lng(), coord.lat()), x = this.px(m), y = this.py(m);
+      // 약국 캡슐은 의원·중소병원 점 위에 그려지므로 캡슐 모양(중심선에서 두께의 절반 + 여유 2.5px 안)을 먼저 맞춰 본다
+      for (let i = this.pts.length - 1; i >= 0; i--) {
+        const p = this.pts[i]; if (!p.pl) continue;
+        const zs = p.pl.zs, cr = 3.2 * PILL_S * zs + 2.5, half = 4.3 * PILL_S * zs;
+        const ax = (p.pl.t > 0 ? -1 : 1) * Math.cos(PILL_ROT * Math.PI / 180), ay = Math.sin(PILL_ROT * Math.PI / 180);
+        for (const [dx, dy] of p.pl.L.pts) {
+          const cx = p.px + dx * zs, cy = p.py + dy * zs, t = Math.max(-half, Math.min(half, (x - cx) * ax + (y - cy) * ay));
+          if ((x - cx - t * ax) ** 2 + (y - cy - t * ay) ** 2 <= cr * cr) return p;
+        }
+      }
       let best = null, bd = 100;
       for (let i = this.pts.length - 1; i >= 0; i--) {
         const p = this.pts[i], d = (p.px - x) ** 2 + (p.py - y) ** 2;
-        if (d <= (p.rad + 2) ** 2) return p;
+        if (!p.pl && d <= (p.rad + 2) ** 2) return p;
         if (d < bd) { bd = d; best = p; }
       }
       return best;
@@ -1092,12 +1195,12 @@ function initMap(){
   P.forEach(p => {
     const el = document.createElement('div');
     el.className = 'pm'; el.title = `${p.n} (약사 ${p.ps}명${p.hs ? `, 한약사 ${p.hs}명` : ''})`;
-    el.innerHTML = `<span>${p.ps || (p.hs ? '한' : '')}</span><b class="pm-rank"></b>`;
+    el.innerHTML = `${pillSvg(p.ps, p.tilt, p.pk)}<b class="pm-rank"></b>`;
     const m = new naver.maps.Marker({ map, position: new naver.maps.LatLng(p.y, p.x), zIndex: 60, icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
     naver.maps.Event.addListener(m, 'click', () => tapPh('p:' + p.id));
     state.pm[p.id] = { m, el };
   });
-  const zoomClass = z => mapEl.classList.toggle('far', z < 12);
+  const zoomClass = z => { mapEl.classList.toggle('far', z < 12); mapEl.style.setProperty('--pz', pillZoom(z)); };
   naver.maps.Event.addListener(map, 'zoom_changed', zoomClass);
   // 중소병원과 로컬 점은 캔버스라서 지도 클릭 위치로 어느 점인지 찾는다
   naver.maps.Event.addListener(map, 'click', e => {
@@ -1152,10 +1255,10 @@ if (!KEY || KEY === 'YOUR_CLIENT_ID') {
 } else {
   const s = document.createElement('script');
   s.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=' + encodeURIComponent(KEY);
-  s.onload = () => {
+  s.onload = () => POI_READY.then(() => {
     if (window.naver && window.naver.maps && window.naver.maps.Map) initMap();
     else showNotice('<h2>지도 스크립트를 불러오지 못했습니다</h2><p>새로고침한 뒤에도 같으면 Client ID와 등록한 Web 서비스 URL을 확인하세요.</p>');
-  };
+  });
   s.onerror = () => showNotice('<h2>지도 스크립트를 불러오지 못했습니다</h2><p>인터넷 연결을 확인한 뒤 새로고침하세요.</p>');
   document.head.appendChild(s);
 }
