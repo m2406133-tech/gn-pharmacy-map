@@ -16,6 +16,7 @@
 표준 라이브러리만 쓴다.
 """
 import csv, hashlib, io, json, math, re, sys, zipfile
+import dataio
 from datetime import date, timedelta
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -295,8 +296,7 @@ def main(folder, basis, license_file=None, hours_file=None):
     if hours_file:
         data['hh'] = hh
 
-    out = ROOT / 'local.json'
-    out.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
+    dataio.write_local(data)   # columns + 값 배열로 local.json을 쓰고 version.json을 갱신한다
     print(f'중소병원 {len(mids)}곳, 의원 {len(clinics)}곳, 로컬 약국 {len(local)}곳 (병원권 28곳과 대조된 기관 {in28}곳, '
           f'병원권 약국과 대조 {matched}곳, 병원 500m 안 미등재 {closed}곳 제외)')
     big = [f"{x['n']}({x['sp']}명)" for x in mids if x['sp'] >= 15]

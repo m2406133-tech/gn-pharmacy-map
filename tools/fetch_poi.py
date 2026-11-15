@@ -12,6 +12,7 @@
 표준 라이브러리만 쓴다.
 """
 import difflib, json, os, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
+import dataio
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -101,7 +102,7 @@ def pick(f, items):
 def facilities():
     s = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
     data, _ = json.JSONDecoder().raw_decode(s[s.index('const DATA = ') + 13:])
-    loc = json.load(open(os.path.join(ROOT, 'local.json'), encoding='utf-8'))
+    loc = dataio.load_local()
     out = [(f"h:{h['no']}", h['n'], h) for h in data['hosp']] + [(f"p:{p['id']}", p['n'], p) for p in data['ph']]
     out += [(f"{k}:{x['id']}", x['n'], x) for k in 'mc' for x in loc[k]] + [(f"l:{x['id']}", x['n'], x) for x in loc['p']]
     return out
@@ -130,6 +131,7 @@ def main(out, limit=None):
     json.dump(cache, open(cache_path, 'w', encoding='utf-8'), ensure_ascii=False)
     poi = {k: v[:2] for k, v in cache.items() if v}
     json.dump(poi, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    dataio.write_version()   # poi.json이 저장소의 poi.json일 때 version.json의 해시를 갱신한다
     kinds = {}
     for k, v in cache.items():
         t = k[0]

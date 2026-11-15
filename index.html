@@ -715,7 +715,23 @@ assignTilt(P, []);
 // poi.json(tools/fetch_poi.py가 네이버 검색 API로 만든다)은 네이버 지도가 아이콘을 찍는 업소별 위치다. 심평원 좌표는 건물 단위라서
 // 같은 건물의 의원과 약국이 한 점에 겹치므로, poi.json에 있는 업소는 그 위치를 쓰고 없거나 못 읽으면 심평원 좌표를 그대로 쓴다.
 // 키는 'h:병원 no'·'p:약국 id'·'m:중소병원 id'·'c:의원 id'·'l:로컬 약국 id'이고 값은 [경도, 위도]다
-const POI_READY = fetch('poi.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({})).then(poi => {
+/* 데이터 파일은 version.json이 알려 주는 해시를 주소에 붙여('local.json?v=해시') 받고 브라우저 캐시를 그대로 쓴다(force-cache).
+   내용이 바뀌면 해시가 달라져 주소가 바뀌므로 낡은 캐시가 남지 않는다. version.json이 없거나 못 읽으면 예전처럼 매번 확인해서 받는다.
+   local.json은 m·c·p 행을 columns 순서의 값 배열로 두므로(tools/dataio.py), 읽은 뒤 객체로 되돌린다 */
+const VER_READY = fetch('version.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+const getData = (name, ver) => ver[name]
+  ? fetch(`${name}.json?v=${ver[name]}`, { cache: 'force-cache' })
+  : fetch(`${name}.json`, { cache: 'no-cache' });
+function unpackLocal(L){
+  if (!L.columns) return L;   // 예전 형식(객체 목록) 그대로면 변환하지 않는다
+  ['m', 'c', 'p'].forEach(g => {
+    const cols = L.columns[g];
+    L[g] = L[g].map(row => { const o = {}; cols.forEach((k, i) => { if (row[i] !== null) o[k] = row[i]; }); return o; });
+  });
+  delete L.columns;
+  return L;
+}
+const POI_READY = VER_READY.then(ver => getData('poi', ver)).then(r => r.ok ? r.json() : {}).catch(() => ({})).then(poi => {
   H.forEach(h => { const v = poi['h:' + h.no]; if (v) { h.x = v[0]; h.y = v[1]; } });
   P.forEach(p => { const v = poi['p:' + p.id]; if (v) { p.x = v[0]; p.y = v[1]; } });
   assignTilt(P, []);   // 좌표가 바뀌었으니 가까운 약국끼리 기울기를 다시 정한다
@@ -1052,7 +1068,7 @@ store.set(TOKEN_KEY, null);   // 예전 방식으로 이 브라우저에 오래 
 if (sess.get(TOKEN_KEY)) loadMemo(sess.get(TOKEN_KEY)).then(m => {
   if (m && !state.edit) { state.memoPub = state.memo = m; refreshRank(); }
 }).catch(e => { if (e.message === '401') sess.set(TOKEN_KEY, null); });
-Promise.all([fetch('local.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()), POI_READY]).then(([L, poi]) => {
+Promise.all([VER_READY.then(ver => getData('local', ver)).then(r => r.ok ? r.json() : Promise.reject()).then(unpackLocal), POI_READY]).then(([L, poi]) => {
   const byId = xs => Object.fromEntries(xs.map(x => [x.id, x]));
   [['m', 'm'], ['c', 'c'], ['p', 'l']].forEach(([k, pre]) => L[k].forEach(x => { const v = poi[pre + ':' + x.id]; if (v) { x.x = v[0]; x.y = v[1]; } }));
   L.m.concat(L.c, L.p).forEach(x => { x.m = merc(x.x, x.y); });
