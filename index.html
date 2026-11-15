@@ -220,6 +220,26 @@ a{color:var(--hosp)}
 .iw-memo{white-space:pre-wrap;max-height:6.5em;overflow:auto;margin-top:6px;padding:6px 8px;background:var(--ring-soft);border-radius:4px}
 .iw a{margin-right:10px;font-weight:500;text-decoration:none}
 
+/* 매물 찾기: 편집 비밀번호를 넣은 브라우저에서만 여는 입력판. 좁은 화면에서는 아래쪽 절반을 덮는다 */
+/* 넓은 화면에서는 지도 왼쪽 위(확대·축소 단추는 오른쪽 위)에 띄우고, 제목줄을 끌어 옮길 수 있다(initAd). 옮긴 위치는 저장하지 않는다 */
+.ad-dlg{position:fixed;inset:12px auto auto calc(var(--panel-w) + 12px);margin:0;width:min(420px,calc(100vw - var(--panel-w) - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:50}
+.ad-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:move;touch-action:none;user-select:none}
+.ad-head button{border:0;background:none;font-size:18px;padding:2px 6px}
+/* 칸은 넣을 값 길이만큼만 넓히고 한 줄에 여러 개를 흘려 놓는다(숫자는 4~5자리, 선택은 가장 긴 선택지 폭) */
+.ad-grid{display:flex;flex-wrap:wrap;gap:8px 12px}
+.ad-grid label{display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+.ad-grid select{width:auto}
+.ad-grid input[type=number]{width:6.5em}
+.ad-grid input[name=emd]{width:7em}
+.ad-depts{display:flex;flex-wrap:wrap;gap:4px 10px;margin:10px 0;padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:12.5px}
+.ad-depts label{display:flex;align-items:center;gap:4px}
+.ad-go{width:100%;padding:8px;border-radius:6px}
+.ad-list{list-style:none;margin:10px 0 0;padding:0}
+.ad-list button{display:block;width:100%;padding:8px 4px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}
+.ad-score{float:right;font-weight:600}
+.ad-marks{display:block;font-size:12.5px}
+.ad-list small{display:block;color:#555}
+@media (max-width: 860px){ .ad-dlg{inset:auto 0 0 0 !important;width:100vw;height:48dvh;max-height:48dvh;border-radius:10px 10px 0 0} .ad-head{cursor:auto} }
 @media (max-width: 860px){
   body{grid-template-columns:1fr;grid-template-rows:52dvh 1fr;overflow:hidden}
   #mapWrap{grid-row:1}
@@ -263,6 +283,28 @@ a{color:var(--hosp)}
     <label class="toggle"><input type="checkbox" id="optRings" checked> 병원권 반경 표시</label>
     <label class="toggle"><input type="checkbox" id="optPh" checked> 약국 표시</label>
     <div id="editBar"></div>
+    <dialog id="adDlg" class="ad-dlg" aria-labelledby="adTitle">
+      <form id="adForm">
+        <div class="ad-head"><strong id="adTitle">매물 찾기</strong><button type="button" data-act="adclose" aria-label="닫기">✕</button></div>
+        <div class="ad-grid">
+          <label>시군<select name="region"></select></label>
+          <label>읍면동<input name="emd" placeholder="예: 북면"></label>
+          <label>상권<select name="shop"><option value="">상관없음</option><option value="gen">종병 앞</option><option value="hosp">병원 앞</option><option value="clinic">의원 앞</option></select></label>
+          <label>월 조제료(만원)<input name="fee" type="number" min="0" inputmode="numeric"></label>
+          <label>평균 투약일수<select name="days"></select></label>
+          <label>약사 수(국장 포함)<input name="ps" type="number" min="1" inputmode="numeric"></label>
+          <label>전용 평수<input name="py" type="number" min="1" inputmode="numeric"></label>
+          <label>개설 연도<input name="year" type="number" min="1950" max="2100" placeholder="예: 2018" inputmode="numeric"></label>
+          <label>평일 마감<input name="close" type="time"></label>
+          <label>토요일<select name="sat"><option value="">모름</option><option value="off">휴무</option><option value="am">오전만</option><option value="full">종일</option></select></label>
+          <label>일·공휴일<select name="sun"><option value="">모름</option><option value="off">휴무</option><option value="open">영업</option></select></label>
+        </div>
+        <fieldset class="ad-depts" id="adDepts"><legend>처방 과목</legend></fieldset>
+        <button type="submit" class="ad-go">찾기</button>
+      </form>
+      <p id="adMsg" role="status"></p>
+      <ol id="adList" class="ad-list"></ol>
+    </dialog>
     <dialog id="pwDlg" class="pw-dlg"><form method="dialog">
       <p id="pwMsg"></p>
       <input id="pwTok" class="pw-setup" type="password" placeholder="GitHub 토큰" autocomplete="off">
@@ -297,6 +339,7 @@ a{color:var(--hosp)}
   </div></details>
 </main>
 
+<script src="admatch.js"></script>
 <script>
 /* ===== 설정: 네이버 클라우드에서 발급받은 Client ID를 넣으세요 ===== */
 const NCP_KEY_ID = 'ojaq60eret';
@@ -1122,7 +1165,7 @@ const memoBox = (kind, key) => {
 function renderEditBar(){
   const msg = state.msg ? `<span class="edit-msg">${esc(state.msg)}</span>` : '';
   document.getElementById('editBar').innerHTML = !state.edit
-    ? `<button type="button" class="edit-open" data-act="edit">편집</button>${msg}`
+    ? `<button type="button" class="edit-open" data-act="edit">편집</button>${sess.get(TOKEN_KEY) ? '<button type="button" class="edit-open" data-act="ad">매물 찾기</button>' : ''}${msg}`
     : `<div class="edit-bar"><span>${esc(state.msg || (dirty() ? '저장하지 않은 변경이 있습니다.' : '병원권 병원이나 중소병원을 고르면 약국마다 순번(1~3번) 버튼이 나옵니다. 메모는 병원·의원·약국 어디에나 적을 수 있습니다.'))}</span><button type="button" data-act="save">저장</button><button type="button" data-act="done">편집 끝내기</button></div>`;
 }
 // 네이버 정보창이 클릭 전파를 막으므로 캡처 단계에서 받는다
@@ -1132,6 +1175,8 @@ document.addEventListener('click', e => {
   if (act === 'edit') startEdit();
   else if (act === 'save') saveAll();
   else if (act === 'done') endEdit();
+  else if (act === 'ad') openAd();
+  else if (act === 'adclose') document.getElementById('adDlg').close();
   else setRank(state.sel ? +b.dataset.ph : b.dataset.ph, +b.dataset.rank);
 }, true);
 document.addEventListener('input', e => {
@@ -1139,6 +1184,82 @@ document.addEventListener('input', e => {
   const [kind, key] = t.dataset.memo.split(':');
   setMemo(kind, key, t.value);
 });
+/* 매물 찾기: 광고에 적힌 조건(약국 이름은 없다)을 넣으면 그 광고일 수 있는 약국을 점수 순으로 보여 준다.
+   비교 규칙은 admatch.js에 있고, 여기서는 후보를 만들고 입력판을 그린다. 입력값과 결과는 어디에도 저장하지 않는다.
+   단추는 편집 비밀번호를 넣은 브라우저(sess의 TOKEN_KEY)에서만 보인다(renderEditBar) */
+const AD_DEPTS = [['01', '내과'], ['11', '소아청소년과'], ['13', '이비인후과'], ['05', '정형외과'], ['14', '피부과'], ['12', '안과'],
+  ['10', '산부인과'], ['23', '가정의학과'], ['03', '정신건강의학과'], ['15', '비뇨의학과'], ['02', '신경과'], ['21', '재활의학과'], ['49', '치과']];
+const AD_DAYS = { 45: '30~60일 중간', 75: '60~90일 중간', 91: '91일 이상' };
+const AD_SYM = { ok: '✓', mid: '△', no: '✗', na: '—', info: 'ⓘ' };
+// 병원권 약국(DATA.ph)과 로컬 약국을 같은 모양으로 만든다. 로컬 자료를 받은 뒤 한 번만 만든다.
+// 주변 의원은 약국에서 ZONE 안의 의원·중소병원·치과다(병원권 병원은 진료과목 자료가 없어 넣지 않는다)
+let adCands = null;
+function adCandidates(){
+  if (adCands) return adCands;
+  // 치과(의원·병원)는 좌표만 있는 dn([경도, 위도])에서 찾아 과목코드 49(치과)로 센다
+  const near = p => LOC.c.concat(LOC.m).filter(c => gap(p, c) <= ZONE).map(c => c.dp ? c.dp.split(',') : [])
+    .concat((LOC.dn || []).filter(([x, y]) => gap(p, { x, y }) <= ZONE).map(() => ['49']));
+  const small = p => LOC.m.some(m => m.d < MID_MIN && gap(p, m) <= m.zr);
+  const mk = (key, p, ar, hr) => ({ key, name: p.n, sgg: p.sgg, emd: p.emd || '', pk: p.pk, ps: p.ps || 0, area: ar ?? null,
+    opened: p.o || '', hr: hr || null, nearDp: near(p), smallMid: small(p) });
+  adCands = P.map(p => mk('p:' + p.id, p, (LOC.hp || {})[p.id], (LOC.hh || {})[p.id]))
+    .concat(LOC.p.map(p => mk('l:' + p.id, p, p.ar, p.hr)));
+  return adCands;
+}
+function adQuery(f){
+  const v = n => f.elements[n].value.trim(), num = n => +v(n) || 0;
+  return { region: v('region') === '전체' ? '' : v('region'), emd: v('emd'), shop: v('shop'),
+    depts: [...f.querySelectorAll('[name=dept]:checked')].map(x => x.value), joint: f.elements.joint.checked,
+    fee: num('fee'), days: num('days'), ps: num('ps'), py: num('py'), year: num('year'),
+    close: v('close'), sat: v('sat'), sun: v('sun') };
+}
+function adRender(rs){
+  document.getElementById('adList').innerHTML = rs.map(r => `<li><button type="button" data-adgo="${r.c.key}">
+    <b>${esc(r.c.name)}</b> <span>${esc(r.c.emd)}</span><span class="ad-score">${r.score}점</span>
+    <span class="ad-marks">${r.marks.map(m => `${esc(m.k)} ${AD_SYM[m.v]}`).join(' · ')}</span>
+    <small>${esc(r.marks.map(m => m.t).join(', '))}</small></button></li>`).join('');
+}
+function openAd(){
+  if (!sess.get(TOKEN_KEY)) return;
+  document.getElementById('adDlg').show();
+}
+(function initAd(){
+  const f = document.getElementById('adForm'), d = document.getElementById('adDlg'), msg = document.getElementById('adMsg');
+  // 넓은 화면에서는 제목줄을 끌어 입력판을 옮긴다. 화면 밖으로 나가지 않게 막고, 좁은 화면(아래쪽 절반에 고정)에서는 옮기지 않는다
+  const head = d.querySelector('.ad-head');
+  head.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('button') || matchMedia('(max-width: 860px)').matches) return;
+    const r = d.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+    const move = ev => Object.assign(d.style, {
+      left: Math.min(Math.max(0, ev.clientX - dx), innerWidth - r.width) + 'px',
+      top: Math.min(Math.max(0, ev.clientY - dy), innerHeight - head.offsetHeight) + 'px' });
+    const up = () => ['pointermove', 'pointerup', 'pointercancel'].forEach((t, i) => head.removeEventListener(t, i ? up : move));
+    head.setPointerCapture(e.pointerId);
+    head.addEventListener('pointermove', move); head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
+  });
+  f.elements.region.innerHTML = REGIONS.map(r => `<option>${r}</option>`).join('');
+  f.elements.days.innerHTML = '<option value="">기본값</option>' +
+    Object.keys(AdMatch.FEE).map(k => `<option value="${k}">${AD_DAYS[k] || k + '일'}</option>`).join('');
+  document.getElementById('adDepts').insertAdjacentHTML('beforeend',
+    AD_DEPTS.map(([c, n]) => `<label><input type="checkbox" name="dept" value="${c}">${n}</label>`).join('') +
+    '<label><input type="checkbox" name="joint">연합의원(한 의원에 모두)</label>');
+  f.addEventListener('submit', e => {
+    e.preventDefault();
+    if (!LOC.basis) { msg.textContent = '로컬 약국 자료를 불러오는 중입니다. 잠시 뒤 다시 눌러 주세요.'; return; }
+    const q = adQuery(f);
+    if (!AdMatch.scored(q)) { msg.textContent = '조건을 하나 이상 적어 주세요.'; adRender([]); return; }
+    const rs = AdMatch.rank(adCandidates(), q, LOC.basis);
+    msg.textContent = rs.length ? `점수 순 상위 ${rs.length}곳` : '조건에 맞는 약국이 없습니다.';
+    adRender(rs);
+  });
+  document.getElementById('adList').addEventListener('click', e => {
+    const b = e.target.closest('[data-adgo]'); if (!b || !state.map) return;
+    const key = b.dataset.adgo;
+    if (key[0] === 'p') focusPh(+key.slice(2), true); else focusLoc(key.slice(2), true);
+  });
+  // 닫으면 입력과 결과를 지운다(저장하지 않는다)
+  d.addEventListener('close', () => { f.reset(); msg.textContent = ''; adRender([]); });
+})();
 renderEditBar();
 fetch('rank.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(r => {
   state.pub = r;

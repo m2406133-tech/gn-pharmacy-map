@@ -13,6 +13,8 @@
   심평원 기준일 뒤에 문을 연 창고형약국은 인허가 자료로 로컬 약국에 더한다(lic: 1, id는 관리번호의 해시).
 - 영업시간 JSON(tools/fetch_hours.py로 받는다)을 주면 이름과 도로명주소, 없으면 이름과 좌표 100m로 맞춰 붙인다.
   로컬 약국은 hr, 병원권 약국은 hh({ 약국 id: hr })에 넣는다. hr은 월~일, 공휴일 8칸을 쉼표로 이은 '0900-1730,…'이고 쉬는 날은 빈칸이다.
+- 진료과목(5.의료기관별상세정보서비스_03_진료과목정보)은 의원·중소병원의 dp에 과목코드를 ','로 이어 넣는다(00 일반의 제외).
+- 치과의원·치과병원은 지도에 그리지 않고 좌표만 dn([[경도, 위도], …])에 넣는다. 매물 찾기의 처방 과목 '치과'에 쓴다.
 표준 라이브러리만 쓴다.
 """
 import csv, hashlib, io, json, math, re, sys, zipfile
@@ -184,8 +186,11 @@ def main(folder, basis, license_file=None, hours_file=None):
     hosp, hph = data['hosp'], data['ph']
     same = lambda a, b: a['n'] == b['n'] and gap(a, b) < 50
 
-    inst = [r for r in rows(find(folder, '1.병원정보서비스*.xlsx'))
-            if r['시도코드명'] == '경남' and r['종별코드명'] in ('의원', '병원', '종합병원') and region(r['시군구코드명']) and r['좌표(X)']]
+    every = [r for r in rows(find(folder, '1.병원정보서비스*.xlsx'))
+             if r['시도코드명'] == '경남' and region(r['시군구코드명']) and r['좌표(X)']]
+    inst = [r for r in every if r['종별코드명'] in ('의원', '병원', '종합병원')]
+    # 치과는 지도에 그리지 않고 매물 찾기의 처방 과목(치과)에만 쓰므로 좌표만 둔다
+    dent = [[round(float(r['좌표(X)']), 6), round(float(r['좌표(Y)']), 6)] for r in every if r['종별코드명'] in ('치과의원', '치과병원')]
     clinics, mids, in28 = [], [], 0
     for r in inst:
         c = base(r)
@@ -199,6 +204,14 @@ def main(folder, basis, license_file=None, hours_file=None):
             clinics.append(c)
         else:
             mids.append(dict(c, typ=r['종별코드명']))
+
+    # 진료과목: 일반의만 있는 의원도 과목을 신고하므로 전문의 수가 아니라 신고 과목 목록을 쓴다. 00(일반의)은 뺀다
+    keyed = {hashlib.sha1(r['암호화요양기호'].encode()).hexdigest()[:8] for r in inst}
+    depts = {}
+    for r in rows(find(folder, '5.*진료과목정보*.xlsx')):
+        k = hashlib.sha1(r['암호화요양기호'].encode()).hexdigest()[:8]
+        if k in keyed and r['진료과목코드'] and r['진료과목코드'] != '00':
+            depts.setdefault(k, set()).add(r['진료과목코드'])
 
     pharm = [r for r in rows(find(folder, '2.약국정보서비스*.xlsx'))
              if r['시도코드명'] == '경남' and region(r['시군구코드명']) and r['좌표(X)']]
@@ -285,12 +298,16 @@ def main(folder, basis, license_file=None, hours_file=None):
     allph = hph + local
     for c in clinics + mids:
         c['p100'] = sum(gap(c, p) <= 100 for p in allph)
+    for c in clinics + mids:   # 열 순서를 지키려고 p100 다음에 붙인다
+        if c['id'] in depts:
+            c['dp'] = ','.join(sorted(depts[c['id']]))
+    print(f"진료과목: 의원 {sum('dp' in c for c in clinics)}/{len(clinics)}곳, 중소병원 {sum('dp' in m for m in mids)}/{len(mids)}곳")
     for p in local:
         p['c100'] = sum(gap(p, c) <= 100 for c in clinics)
     ids = [x['id'] for x in mids + clinics + local]
     assert len(ids) == len(set(ids)), 'id가 겹칩니다'
 
-    data = {'basis': basis, 'm': mids, 'c': clinics, 'p': local}
+    data = {'basis': basis, 'm': mids, 'c': clinics, 'p': local, 'dn': dent}
     if license_file:
         data['hp'] = hp
     if hours_file:
@@ -302,6 +319,7 @@ def main(folder, basis, license_file=None, hours_file=None):
     big = [f"{x['n']}({x['sp']}명)" for x in mids if x['sp'] >= 15]
     if big:
         print('주의: 병원권 기준(의과전문의 15명 이상)인데 병원권에 없는 곳 ' + ', '.join(big))
+    out = ROOT / 'local.json'
     print(f'{out} {out.stat().st_size // 1024}KB')
 
 
