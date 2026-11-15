@@ -13,7 +13,7 @@
   --hosp:#24479A; --hosp-soft:#E7ECF7; --rx:#0F7A58; --rx-soft:#E3F1EB; --ring:#C98A00; --ring-soft:#FFF4D6;
   --cross:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 1.3v7.4M1.3 5h7.4' stroke='%23fff' stroke-width='2.3'/%3E%3C/svg%3E");
   --cross-hosp:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 1.3v7.4M1.3 5h7.4' stroke='%2324479A' stroke-width='2.3'/%3E%3C/svg%3E");
-  --mid:#A8432A; --mid-soft:#F8E9E4; --loc:#5B45A8; --loc-soft:#EEEAF8;
+  --mid:#A8432A; --mid-soft:#F8E9E4; --loc:#17753F; --loc-soft:#E3F3E9;
   --panel-w:392px;
 }
 *{box-sizing:border-box}
@@ -89,6 +89,7 @@ a{color:var(--hosp)}
 .facts{display:grid;grid-template-columns:repeat(4,1fr);margin:14px 0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .facts div{padding:8px 10px;border-right:1px solid var(--line)}
 .facts div:last-child{border-right:0}
+.facts.n3{grid-template-columns:repeat(3,1fr)}
 .facts dt{font-size:11.5px;color:var(--muted)}
 .facts dd{margin:0;font-size:18px;font-weight:600}
 .facts .hl dd{color:var(--hosp)}
@@ -101,7 +102,7 @@ a{color:var(--hosp)}
 .sec-h h3{font-size:15px;margin:0}
 .sec-h span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 
-/* distance scale — matches the 100 / 300 / 500 m rings on the map */
+/* distance scale — 병원 반경(zr)이나 의원 ZONE을 끝으로 0 / 중간 / 끝 세 눈금을 둔다 */
 .scale{position:relative;height:16px;margin:6px 0 4px;font-size:10.5px;color:var(--muted)}
 .scale span{position:absolute;transform:translateX(-50%)}
 .ph-list{list-style:none;margin:0;padding:0}
@@ -115,6 +116,7 @@ a{color:var(--hosp)}
 .ruler::before,.ruler::after{content:"";position:absolute;top:0;bottom:0;width:1px;background:#fff;z-index:1}
 .ruler::before{left:20%}.ruler::after{left:60%}
 .ruler.r300::before{left:33.3%}.ruler.r300::after{display:none}
+.ruler.rz::before{left:50%}.ruler.rz::after{display:none}
 .ph-sub{font-size:12.5px;color:var(--muted)}
 .ph-sub b{font-weight:500;color:var(--ink)}
 .ph-links{display:flex;gap:12px;margin-top:4px;font-size:12.5px}
@@ -144,7 +146,7 @@ a{color:var(--hosp)}
 .lg-c{width:10px;height:10px;border-radius:50%;background:var(--loc);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--loc)}
 .lg-h{width:18px;height:18px;border-radius:50%;background:var(--hosp) var(--cross) center/60% no-repeat;border:2px solid #fff;box-shadow:0 0 0 1px var(--hosp)}
 .lg-p,.lg-mp,.lg-lp{width:20px;height:8.5px;border-radius:4.3px;border:.7px solid rgba(30,25,25,.6);background:linear-gradient(90deg,var(--c) 50%,#F6B80A 50%);transform:rotate(-50deg);margin:0 1px}
-.lg-p{--c:#24479A}.lg-mp{--c:#A8432A}.lg-lp{--c:#5B45A8}
+.lg-p{--c:#24479A}.lg-mp{--c:#A8432A}.lg-lp{--c:#17753F}
 .lg-r{width:14px;height:14px;border-radius:50%;border:1.5px dashed var(--hosp)}
 .lg-n{font-style:normal;font-size:10.5px;font-weight:700;line-height:1;color:#fff;background:var(--ink);padding:2px 4px;border-radius:3px}
 
@@ -159,15 +161,15 @@ a{color:var(--hosp)}
 .far .hm-label{display:none}
 .hm.sel .hm-dot{box-shadow:0 0 0 3px var(--ring),0 1px 4px rgba(0,0,0,.3)}
 .hm.sel .hm-label{background:var(--hosp);color:#fff;display:block}
-/* 약국: 약사 수만큼 캡슐을 비스듬히 나란히 놓는다(pillSvg). 한쪽 색은 시설 색(병원권 파랑, 중소병원 벽돌, 로컬 보라), 반대쪽은 노랑이다.
-   캡슐 색이 파랑·보라라서 선택 윤곽은 어두운 먹색이다 */
+/* 약국: 약사 수만큼 캡슐을 비스듬히 나란히 놓는다(pillSvg). 한쪽 색은 시설 색(병원권 파랑, 중소병원 벽돌, 로컬 초록), 반대쪽은 노랑이다.
+   캡슐 색이 파랑·초록처럼 어두워서 선택 윤곽은 어두운 먹색이다 */
 .pm{width:max-content;transform:translate(-50%,-50%);line-height:0;cursor:pointer}
 .pm svg{display:block;overflow:visible;transform:scale(var(--pz,1))}   /* --pz: 확대할수록 커지는 배율(pillZoom) */
 .pm-rank{margin-left:calc((var(--pz,1) - 1) * 14px)}
 .has-sel .pm{opacity:.28}
 .has-sel .pm.in{opacity:1;transform:translate(-50%,-50%) scale(1.25)}
 .pm.focus{opacity:1;transform:translate(-50%,-50%) scale(1.25)}
-.pm.focus svg{filter:drop-shadow(0 0 1px var(--ink)) drop-shadow(0 0 2px var(--ink)) drop-shadow(0 0 3px var(--ink))}
+.pm.focus svg,.pm.focus .wp{filter:drop-shadow(0 0 1px var(--ink)) drop-shadow(0 0 2px var(--ink)) drop-shadow(0 0 3px var(--ink))}
 .hide-ph .pm{display:none!important}
 .pm-rank{display:none;position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);background:var(--ink);color:#fff;font-size:11.5px;font-weight:700;line-height:1;padding:3px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .has-sel .pm.rk .pm-rank{display:block}
@@ -175,10 +177,11 @@ a{color:var(--hosp)}
 .ph-staff.han{color:#7A4B00;background:var(--ring-soft)}
 .ph-grp{display:inline-block;font-size:12px;font-weight:600;color:var(--hosp);background:var(--hosp-soft);padding:0 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
 .ph-wh{display:inline-block;font-size:12px;font-weight:600;color:#7A1F1F;background:#FBE4E4;padding:0 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
-.wm{transform:translate(-11px,-12px);font:20px/1 "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;cursor:pointer;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.pm .wp{display:block;position:relative;transform:scale(var(--pz,1))}   /* 창고형약국: 약사 수만큼 💩(poopHtml) */
+.wp i{position:absolute;transform:translate(-50%,-50%);font:normal 16px/1 "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
 /* 로컬: 캔버스 점, 고른 의원과 그 주변 로컬 약국만 HTML 마커 */
 .has-sel .loc-layer{opacity:.35}
-.hide-hosp .hm,.hide-hosp .pm:not(.lp){display:none!important}
+.hide-hosp .hm,.hide-hosp .pm.hz{display:none!important}
 .cm .hm-dot{background:var(--loc);width:16px;height:16px;margin:4px;box-shadow:0 0 0 1px var(--loc),0 1px 4px rgba(0,0,0,.3)}
 .hm.cm.sel .hm-label{background:var(--loc);border-color:var(--loc)}
 .mm .hm-dot{border-radius:4px;background:var(--mid) var(--cross) center/62% no-repeat;box-shadow:0 0 0 1px var(--mid),0 1px 4px rgba(0,0,0,.3)}
@@ -257,7 +260,7 @@ a{color:var(--hosp)}
       <label class="grp-opt mid"><input type="checkbox" id="optMid" checked><span><b>중소병원</b><small id="midCount">불러오는 중</small></span></label>
       <label class="grp-opt loc"><input type="checkbox" id="optLoc" checked><span><b>로컬</b><small id="locCount">불러오는 중</small></span></label>
     </div>
-    <label class="toggle"><input type="checkbox" id="optRings" checked> 병원권 500m 반경 표시</label>
+    <label class="toggle"><input type="checkbox" id="optRings" checked> 병원권 반경 표시</label>
     <label class="toggle"><input type="checkbox" id="optPh" checked> 약국 표시</label>
     <div id="editBar"></div>
     <dialog id="pwDlg" class="pw-dlg"><form method="dialog">
@@ -282,15 +285,15 @@ a{color:var(--hosp)}
     <div><b>병원권</b>
       <span><i class="lg-h"></i>병원 (전문의 15명 이상)</span>
       <span><i class="lg-p"></i>약국 (캡슐 1개 = 약사 1명)</span>
-      <span><i class="lg-r"></i>병원 반경 500m</span>
+      <span><i class="lg-r"></i>병원 반경 (건물 가장자리에서 <span data-zone>100</span>m쯤)</span>
       <span><i class="lg-n">1번</i>접근성 순번</span></div>
     <div><b>중소병원</b>
       <span><i class="lg-m"></i>병원 (전문의 15명 미만)</span>
-      <span><i class="lg-mp"></i>약국 (300m 안)</span>
+      <span><i class="lg-mp"></i>약국 (의사 <span data-midmin>10</span>명 이상 병원 반경 안)</span>
       <b>로컬</b>
       <span><i class="lg-c"></i>의원</span>
-      <span><i class="lg-lp"></i>약국</span>
-      <span id="lgWh" hidden><i class="lg-w">💩</i>창고형약국</span></div>
+      <span><i class="lg-lp"></i>약국 (병원 반경 밖, 작은 병원 포함)</span>
+      <span id="lgWh" hidden><i class="lg-w">💩</i>창고형약국 (💩 1개 = 약사 1명)</span></div>
   </div></details>
 </main>
 
@@ -303,11 +306,48 @@ const DATA = {"hosp":[{"no":1,"n":"양산부산대학교병원","s":"양산부�
 const H = DATA.hosp, P = DATA.ph;
 const PH = Object.fromEntries(P.map(p => [p.id, p]));
 const HN = Object.fromEntries(H.map(h => [h.no, h]));
+/* 병원권 약국은 병원 반경(h.zr) 안에 있는 약국이다. DATA.ph는 병원 500m 안 약국 전부지만, 반경보다 먼 약국은 병원이 아니라
+   그 주변 의원에 딸린 로컬 약국으로 본다(색과 묶음이 로컬). 반경은 건물 가장자리에서 ZONE쯤이다: 병원이 클수록 건물이 넓어
+   약국이 중심점에서 멀리 있으므로, 의사 수로 건물 크기를 어림해 더한다(zoneR). 로컬 의원은 건물이 작아 ZONE 그대로다.
+   병원 반경 안에 있으면서 로컬 의원 가까이에도 있는 약국은 한 종류로만 센다: 병원 중심에서 ZONE 안이면 병원 문 앞이라 의원이
+   붙어 있어도 병원권이고, 그보다 멀면서 의원이 같은 건물(DOOR m 안)에 있으면 그 의원의 문전약국이라 로컬이다(applyZones).
+   병원 반경 안이라도 의원 건물에서 DOOR보다 떨어진 약국은 병원 약국가의 일부라 병원권이다(파티마병원 앞 약국가).
+   중소병원도 같은 식으로 가르되, 의사가 MID_MIN명보다 적은 병원(서울아동병원처럼 의사 2~4명인 병원은 건물 안 의원들과
+   다를 바 없다)은 병원으로 치지 않아 그 약국도 로컬이다(assignKind). 값을 바꾸려면 ZONE·MID_MIN·zoneR만 고친다.
+   data-zone·data-midmin이 붙은 화면 문구는 아래에서 이 값으로 채운다 */
+const ZONE = 100, MID_MIN = 10, DOOR = 30;
+document.querySelectorAll('[data-zone]').forEach(e => { e.textContent = ZONE; });
+document.querySelectorAll('[data-midmin]').forEach(e => { e.textContent = MID_MIN; });
+// 병원 반경(m). 건물 반지름은 연면적의 제곱근에 비례하고 연면적은 의사 수에 대략 비례하므로, 의사 수의 제곱근에 비례해 ZONE에 더한다
+// (의사 16명 이하는 ZONE 그대로). 가장 가까운 약국(near)이 그보다 멀면 건물이 그만큼 넓고 길 건너에 약국가가 있다고 보고 near의 1.8배까지 넓힌다
+// (파티마병원은 가장 가까운 약국이 199m라 358m). 병원 500m 안 약국만 다루므로 400m를 넘기지 않는다
+const zoneR = (doctors, near) => Math.round(Math.min(400, Math.max(ZONE + 12 * Math.max(0, Math.sqrt(doctors) - 4), near == null ? 0 : near * 1.8)));
+// p가 병원 no의 병원권 약국인가(종류 pk가 h이고 그 병원 반경 안)
+const inZoneOf = (p, no) => p.pk === 'h' && p.h.some(z => z[0] === no && z[1] <= HN[no].zr);
+// 약국과 같은 건물(DOOR m 안)에 로컬 의원이나 의사 MID_MIN명 미만의 작은 병원이 있는가(로컬 자료를 받은 뒤에만 알 수 있다)
+const localNear = p => LOC.c.some(c => gap(p, c) <= DOOR) || LOC.m.some(m => m.d < MID_MIN && gap(p, m) <= DOOR);
+// 병원별 반경(zr)과 가장 가까운 약국 거리(near), 약국의 종류(pk), 병원별 병원권 약국 수·약사·한약사와 병원권이 아닌 약국 수를 p.h(병원 no, 거리)로 계산한다.
+// 약국 좌표가 바뀌거나(poi.json) 로컬 자료가 오면 다시 부른다. 중소병원 반경 안이면 로컬 자료를 받은 뒤 'm'으로 바뀐다(assignKind)
+function applyZones(){
+  H.forEach(h => {
+    const ds = P.flatMap(p => p.h.filter(z => z[0] === h.no).map(z => z[1]));
+    h.near = ds.length ? Math.min(...ds) : null;
+    h.zr = zoneR(h.tot, h.near);
+  });
+  P.forEach(p => {
+    const z = p.h.filter(z => z[1] <= HN[z[0]].zr).sort((a, b) => a[1] - b[1])[0];   // 반경 안의 가장 가까운 병원
+    p.pk = z && (z[1] <= ZONE || !localNear(p)) ? 'h' : 'l';
+  });
+  H.forEach(h => {
+    const all = P.filter(p => p.h.some(z => z[0] === h.no)), zone = all.filter(p => inZoneOf(p, h.no)), sum = k => zone.reduce((s, p) => s + (p[k] || 0), 0);
+    Object.assign(h, { zc: zone.length, zout: all.length - zone.length, zrx: sum('ps'), zhrx: sum('hs') });
+  });
+}
 const REGIONS = ['전체','창원','진주','김해','양산','거제','사천','통영'];
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
-  groups:{ hosp:true, mid:true, loc:true }, lsel:null, psel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null, wm:[], whSig:null };
+  groups:{ hosp:true, mid:true, loc:true }, lsel:null, psel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null };
 /* 병원별 약국 순번은 rank.json({ 병원 no: [1번 약국 id, 2번, 3번] })에 있고, 중소병원은 'm:중소병원 id' 키에
-   ['p:약국 id' 또는 'l:로컬 약국 id', …]로 함께 둔다(중소병원 300m 안에는 두 종류 약국이 섞여 있어서).
+   ['p:약국 id' 또는 'l:로컬 약국 id', …]로 함께 둔다(중소병원 반경 안에는 두 종류 약국이 섞여 있어서).
    창고형약국 자동 판정을 직접 바꾼 곳은 wh.json({ 'p:약국 id' 또는 'l:로컬 약국 id': 1 또는 0 })에 있다
    (1은 창고형으로, 0은 아닌 것으로). 둘 다 공개라서 모든 방문자에게 보인다. wh.json은 저장소에서 직접 고친다.
    나만 보는 메모는 비공개 저장소의 memo.json({ h: { 병원 no: 글 }, p: { 약국 id: 글 }, m: { 중소병원 id: 글 },
@@ -332,7 +372,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const nmapUrl = q => 'https://map.naver.com/p/search/' + encodeURIComponent(q);
 const area = h => `${h.sgg.replace(/^창원(.+구)$/, '창원 $1')} ${h.emd}`;
 const tierClass = t => t === '상급종합' ? 't1' : (t === '종합병원' ? 't2' : 't3');
-const phOf = no => P.filter(p => p.h.some(z => z[0] === no))
+const phOf = no => P.filter(p => inZoneOf(p, no))
                     .map(p => ({ p, d: p.h.find(z => z[0] === no)[1] }))
                     .sort((a, b) => (rankNo(no, a.p.id) || 99) - (rankNo(no, b.p.id) || 99) || a.d - b.d);
 const rankBtns = (no, id, label = '순번') => `<div class="rank-edit"><span>${label}</span>${[1, 2, 3].map(k =>
@@ -364,25 +404,28 @@ function hoursText(key){
    캔버스 한 장에 점으로 그리고, 고른 병원·의원과 그 주변 로컬 약국만 HTML 마커로 띄운다 */
 const LOC = { basis:'', err:false, m:[], c:[], p:[], M:{}, C:{}, P:{} };
 const place = (kind, id) => (kind === 'm' ? LOC.M : LOC.C)[id];
+const placeR = (kind, x) => kind === 'm' ? x.zr : ZONE;   // 중소병원은 병원 반경(zoneR), 로컬 의원은 ZONE
 const gap = (a, b) => { const k = Math.PI / 180;
   return Math.round(6371000 * Math.hypot((b.x - a.x) * k * Math.cos((a.y + b.y) / 2 * k), (b.y - a.y) * k)); };
 const merc = (x, y) => [(x + 180) / 360, (1 - Math.log(Math.tan(Math.PI / 4 + y * Math.PI / 360)) / Math.PI) / 2];
 const locQ = x => `${x.r} ${x.emd} ${x.n}`, locQa = x => x.a.split(',')[0];
+applyZones();   // gap·LOC가 있어야 해서 여기서 처음 부른다
 const phNear = (c, r) => P.map(p => ({ p, d: gap(c, p), hosp: true })).concat(LOC.p.map(p => ({ p, d: gap(c, p), hosp: false })))
                           .filter(z => z.d <= r).sort((a, b) => a.d - b.d);
 
 /* ---------- panel ---------- */
 function renderSummary(){
   document.getElementById('summary').textContent =
-    `의과전문의 15명 이상 병원 ${H.length}곳과 반경 500m 안 약국 ${P.length}곳. 의사·약사 수는 건강보험심사평가원 신고 인원, ${DATA.basis.replace(/-/g,'.')} 기준.` +
+    `의과전문의 15명 이상 병원 ${H.length}곳과 그 반경(건물 가장자리에서 ${ZONE}m쯤이라 큰 병원일수록 넓음) 안 약국 ${P.filter(p => p.pk === 'h').length}곳. 병원 500m 안 약국 ${P.length}곳 중 반경 밖 약국은 로컬로 분류했습니다. 의사·약사 수는 건강보험심사평가원 신고 인원, ${DATA.basis.replace(/-/g,'.')} 기준.` +
     (LOC.basis ? ` 그보다 작은 중소병원 ${LOC.m.length}곳, 로컬 의원 ${LOC.c.length}곳과 약국 ${LOC.p.length}곳은 ${LOC.basis.replace(/-/g,'.')} 기준.` : '');
   const wait = LOC.err ? '불러오지 못했습니다' : '불러오는 중';
   // 이름과 숫자 사이는 줄을 바꾸지 않는 공백으로 묶어 "약국 / 186"처럼 갈라지지 않게 한다
   const n = (k, v) => `${k} ${v.toLocaleString()}`;
-  document.getElementById('hospCount').textContent = `${n('병원', H.length)} · ${n('약국', P.length)}`;
-  const mp = LOC.p.filter(p => p.pk === 'm').length;   // 중소병원 300m 안 약국은 중소병원 묶음에 센다
-  document.getElementById('midCount').textContent = LOC.basis ? `${n('병원', LOC.m.length)} · ${n('약국', mp)}` : wait;
-  document.getElementById('locCount').textContent = LOC.basis ? `${n('의원', LOC.c.length)} · ${n('약국', LOC.p.length - mp)}` : wait;
+  // 약국은 병원권(h)·중소병원(m)·로컬(l) 중 자기 종류(pk)의 묶음에 센다. 병원권 병원 500m 안이라도 ZONE보다 멀면 로컬이다
+  const cnt = k => P.concat(LOC.p).filter(p => p.pk === k).length;
+  document.getElementById('hospCount').textContent = `${n('병원', H.length)} · ${n('약국', cnt('h'))}`;
+  document.getElementById('midCount').textContent = LOC.basis ? `${n('병원', LOC.m.length)} · ${n('약국', cnt('m'))}` : wait;
+  document.getElementById('locCount').textContent = LOC.basis ? `${n('의원', LOC.c.length)} · ${n('약국', cnt('l'))}` : wait;
 }
 function renderRegions(){
   const el = document.getElementById('regions');
@@ -443,7 +486,7 @@ function renderHospRows(){
       <span><span class="h-name">${esc(h.s)}</span>
         <span class="h-meta"><span class="tier ${tierClass(h.typ)}">${esc(h.typ)}</span>${esc(area(h))}</span>
         <span class="h-sub">의과전문의 ${h.sp}명${h.rx != null ? `, 병원 약사 ${h.rx}명` : ''}</span></span>
-      <span class="h-ph"><b>${h.c500}</b><small>약국</small><small>약사 ${h.rx500}</small></span>
+      <span class="h-ph"><b>${h.zc}</b><small>약국</small><small>약사 ${h.zrx}</small></span>
     </button>`).join('') : '<p class="empty">이 지역에는 해당 병원이 없습니다.</p>';
 }
 // 중소병원과 로컬 의원은 검색어가 없으면 지금 지도에 보이는 곳만, 의사 수가 많은 순으로 보여 준다
@@ -476,25 +519,25 @@ function renderPlaceRows(){
       : '<p class="empty">이 화면에는 없습니다. 지도를 옮기거나 축소해 보세요.</p>';
   });
 }
-/* 약국과 연계된 병원·의원: 그 약국을 주변 약국으로 꼽는 곳이다. 상세 화면과 같은 기준으로 병원권 병원은 500m(p.h),
-   중소병원과 로컬 의원은 300m 안이다. 병원권 → 중소병원 → 의원 순, 같은 종류끼리는 가까운 순으로 둔다.
+/* 약국과 연계된 병원·의원: 그 약국을 주변 약국으로 꼽는 곳이다. 상세 화면과 같은 기준으로 병원권 병원(p.h)과 중소병원은
+   병원 반경(zr), 로컬 의원은 ZONE 안이다. 병원권 → 중소병원 → 의원 순, 같은 종류끼리는 가까운 순으로 둔다.
    key는 창고형약국과 같은 'p:약국 id'·'l:로컬 약국 id'다 */
 const phByKey = key => key[0] === 'p' ? PH[key.slice(2)] : LOC.P[key.slice(2)];
 function linksOf(key){
   const p = phByKey(key), byD = (a, b) => a.d - b.d;
-  const near = kind => LOC[kind].map(x => ({ kind, x, d: gap(p, x) })).filter(z => z.d <= 300).sort(byD);
-  const hs = key[0] === 'p' ? p.h.map(([no, d]) => ({ kind: 'h', x: HN[no], d })).sort(byD) : [];
+  const near = kind => LOC[kind].map(x => ({ kind, x, d: gap(p, x) })).filter(z => z.d <= placeR(kind, z.x)).sort(byD);
+  const hs = key[0] === 'p' ? p.h.filter(z => inZoneOf(p, z[0]) && z[1] <= HN[z[0]].zr).map(([no, d]) => ({ kind: 'h', x: HN[no], d })).sort(byD) : [];
   return hs.concat(near('m'), near('c'));
 }
 const linkName = z => z.kind === 'h' ? z.x.s : z.x.n;
-/* 약국은 검색할 때만 보여 준다. 병원권 약국은 병원권 묶음, 로컬 약국은 로컬 묶음을 켰을 때 찾는다.
+/* 약국은 검색할 때만 보여 준다. 병원권·중소병원·로컬 약국은 각자 묶음을 켰을 때 찾는다(phOn).
    띄어 쓴 낱말이 모두 이름이나 영업시간에 있어야 한다. '17:30 12:30'이면 17시 30분과 12시 30분에 닫는 요일이 있는 약국이다 */
 function renderPhRows(){
   const el = document.getElementById('pRows'); if (!el) return;
   const q = state.lq.trim(), ws = q.split(/\s+/), inR = r => state.region === '전체' || r === state.region;
   const hit = ({ p, key }) => { const s = p.n + ' ' + hoursText(key); return ws.every(w => s.includes(w)); };
-  const xs = !q ? [] : (state.groups.hosp ? P.filter(p => inR(HN[p.h[0][0]].r)).map(p => ({ p, key: 'p:' + p.id })).filter(hit) : [])
-    .concat(LOC.p.filter(p => locPhOn(p) && inR(p.r)).map(p => ({ p, key: 'l:' + p.id })).filter(hit));
+  const xs = !q ? [] : P.filter(p => phOn(p) && inR(HN[p.h[0][0]].r)).map(p => ({ p, key: 'p:' + p.id })).filter(hit)
+    .concat(LOC.p.filter(p => phOn(p) && inR(p.r)).map(p => ({ p, key: 'l:' + p.id })).filter(hit));
   const byTime = /\d/.test(q);
   showGrp(el, xs.length);
   const n = state.more.p;
@@ -503,9 +546,9 @@ function renderPhRows(){
     return `
     <button type="button" class="h-row" data-rx="${key}">
       <span class="spec rx"><b>${p.ps}</b><small>약사</small></span>
-      <span><span class="h-name">${esc(p.n)}${whTag(key)}${key[0] === 'p' ? '<span class="ph-grp">병원권</span>' : ''}</span>
+      <span><span class="h-name">${esc(p.n)}${whTag(key)}${p.pk === 'h' ? '<span class="ph-grp">병원권</span>' : ''}</span>
         <span class="h-meta">${esc(area(p))}</span>
-        <span class="h-sub">${z ? `${esc(linkName(z))}에서 ${z.d}m${ls.length > 1 ? ` 외 ${ls.length - 1}곳` : ''}` : '300m 안 병원·의원 없음'}</span>${byTime ? `
+        <span class="h-sub">${z ? `${esc(linkName(z))}에서 ${z.d}m${ls.length > 1 ? ` 외 ${ls.length - 1}곳` : ''}` : '반경 안 병원·의원 없음'}</span>${byTime ? `
         <span class="h-sub">${esc(hoursText(key))}</span>` : ''}</span>
     </button>`; }).join('') + (xs.length > n ? `<button type="button" class="more" data-more="p">${Math.min(STEP.p, xs.length - n)}곳 더 보기</button>` : '');
 }
@@ -517,7 +560,7 @@ function renderPh(key){
   d.innerHTML = `
     <button type="button" class="back" id="back">목록으로</button>
     <h2>${esc(p.n)}${whTag(key)}</h2>
-    <p class="addr"><span class="tier rx">${hosp ? '병원권 약국' : '로컬 약국'}</span>${esc(p.a)}</p>
+    <p class="addr"><span class="tier rx">${p.pk === 'h' ? '병원권 약국' : '로컬 약국'}</span>${esc(p.a)}</p>
     <p class="addr">${p.t ? esc(p.t) : '전화번호 없음'}<span style="margin-left:10px">${staff}</span><span style="margin-left:10px">개설 ${esc(p.o)}</span></p>
     ${hrs ? `<p class="addr">영업시간 ${esc(hrs)}</p>` : ''}
     <div class="links">
@@ -525,14 +568,14 @@ function renderPh(key){
       <a class="btn" href="${nmapUrl(hosp ? p.qa : locQa(p))}" target="_blank" rel="noopener">주소로 보기</a>
     </div>
     ${memoBox(key[0], key.slice(2))}
-    <div class="sec-h"><h3>연계된 병원·의원 ${ls.length}곳</h3><span>이 약국을 주변 약국으로 꼽는 곳입니다. 병원권 병원은 500m, 중소병원과 로컬 의원은 300m 안입니다.</span></div>
+    <div class="sec-h"><h3>연계된 병원·의원 ${ls.length}곳</h3><span>이 약국을 주변 약국으로 꼽는 곳입니다. 병원권 병원과 중소병원은 병원 반경, 로컬 의원은 ${ZONE}m 안입니다.</span></div>
     <div class="ph-links-list">${ls.length ? ls.map(({ kind, x, d }) => `
       <button type="button" class="h-row" ${kind === 'h' ? `data-no="${x.no}"` : `data-kind="${kind}" data-id="${x.id}"`}>
         <span class="spec ${kind === 'h' ? '' : kind === 'm' ? 'mid' : 'loc'}"><b>${kind === 'h' ? x.tot : x.d}</b><small>의사</small></span>
         <span><span class="h-name">${esc(linkName({ kind, x }))}</span>
           <span class="h-meta"><span class="tier ${kind === 'h' ? tierClass(x.typ) : kind === 'm' ? 'mid' : 'loc'}">${esc(kind === 'c' ? '의원' : x.typ)}</span>${esc(area(x))}</span></span>
         <span class="ph-dist">${d}m</span>
-      </button>`).join('') : '<p class="empty">300m 안에 병원·의원이 없습니다.</p>'}</div>`;
+      </button>`).join('') : '<p class="empty">반경 안에 병원·의원이 없습니다.</p>'}</div>`;
   document.getElementById('list').hidden = true;
   d.hidden = false;
   document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
@@ -567,15 +610,15 @@ function renderDetail(no){
       <a class="btn" href="${nmapUrl(h.qa)}" target="_blank" rel="noopener">주소로 보기</a>
     </div>
     ${memoBox('h', no)}
-    <div class="sec-h"><h3>500m 안 약국 ${items.length}곳, 약사 ${h.rx500}명${h.hrx500 ? `, 한약사 ${h.hrx500}명` : ''}</h3><span>100m 안 ${h.c100}곳${h.near != null ? `, 가장 가까운 곳 ${h.near}m` : ''}</span></div>
+    <div class="sec-h"><h3>${h.zr}m 안 약국 ${items.length}곳, 약사 ${h.zrx}명${h.zhrx ? `, 한약사 ${h.zhrx}명` : ''}</h3><span>${h.near != null ? `가장 가까운 곳 ${h.near}m` : ''}${h.zout ? `${h.near != null ? ', ' : ''}${h.zr}m 밖이거나 로컬 의원 건물에 있는 ${h.zout}곳은 로컬 약국으로 분류했습니다` : ''}</span></div>
     ${(state.rank[no] || []).some(Boolean) ? '<p class="facts-note">번호가 붙은 약국은 접근성을 기준으로 직접 정한 순번이고, 나머지 약국은 직선거리순입니다.</p>' : ''}
-    <div class="scale" aria-hidden="true"><span style="left:0;transform:none">0</span><span style="left:20%">100m</span><span style="left:60%">300m</span><span style="left:100%;transform:translateX(-100%)">500m</span></div>
+    <div class="scale" aria-hidden="true"><span style="left:0;transform:none">0</span><span style="left:50%">${Math.round(h.zr / 2)}m</span><span style="left:100%;transform:translateX(-100%)">${h.zr}m</span></div>
     <ol class="ph-list">${items.map(({p, d}) => {
-      const others = p.h.filter(z => z[0] !== no).map(z => `${esc(HN[z[0]].s)} ${z[1]}m`);
+      const others = p.h.filter(z => z[0] !== no && inZoneOf(p, z[0])).map(z => `${esc(HN[z[0]].s)} ${z[1]}m`);
       const k = rankNo(no, p.id);
       return `<li class="ph-item" id="ph-${p.id}" data-id="${p.id}">
         <button type="button" class="ph-top" data-focus="${p.id}"><span>${k ? `<span class="ph-rank">${k}번</span>` : ''}<span class="ph-name">${esc(p.n)}</span>${whTag('p:' + p.id)}${p.ps ? `<span class="ph-staff">약사 ${p.ps}</span>` : ''}${p.hs ? `<span class="ph-staff han">한약사 ${p.hs}</span>` : ''}</span><span class="ph-dist">${d}m</span></button>
-        <div class="ruler" aria-hidden="true"><i style="width:${Math.min(100, d / 5)}%"></i></div>
+        <div class="ruler rz" aria-hidden="true"><i style="width:${Math.min(100, d / h.zr * 100)}%"></i></div>
         <div class="ph-sub">${esc(p.a)}</div>
         <div class="ph-sub">${p.t ? `<b>${esc(p.t)}</b>` : '전화번호 없음'}<span style="margin-left:10px">개설 ${esc(p.o)}</span></div>
         ${others.length ? `<div class="ph-also">다른 병원과도 가까움: ${others.join(', ')}</div>` : ''}
@@ -583,7 +626,7 @@ function renderDetail(no){
         ${memoBox('p', p.id)}
         ${state.edit ? rankBtns(no, p.id) : ''}
       </li>`; }).join('')}</ol>
-    <p class="note">약사 수는 약국이 심평원에 신고한 근무 약사 수입니다. 근무 형태(상근·비상근)는 구분되지 않습니다. 거리는 심평원 좌표 기준 직선거리입니다. 실제 걷는 거리와 출입구 위치에 따라 체감 거리가 다릅니다. 네이버지도 링크는 상호 검색이라 같은 이름의 다른 업소가 함께 나올 수 있으니 주소로 대조하세요.</p>`;
+    <p class="note">약사 수는 약국이 심평원에 신고한 근무 약사 수입니다. 근무 형태(상근·비상근)는 구분되지 않습니다. 거리는 지도에 표시된 위치(네이버 업소 위치, 없으면 심평원 좌표) 기준 직선거리입니다. 실제 걷는 거리와 출입구 위치에 따라 체감 거리가 다릅니다. 네이버지도 링크는 상호 검색이라 같은 이름의 다른 업소가 함께 나올 수 있으니 주소로 대조하세요.</p>`;
   document.getElementById('list').hidden = true;
   d.hidden = false;
   document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
@@ -594,11 +637,21 @@ function renderDetail(no){
   };
 }
 
-// 중소병원(m)과 로컬 의원(c)의 상세. 둘 다 300m 안 약국을 병원권·로컬 구분 없이 보여 준다.
-// 중소병원은 병원권처럼 순번을 정할 수 있고, 순번 약국을 맨 앞에 둔다
+// 중소병원(m)과 로컬 의원(c) 주변 약국: 반경(placeR) 안 약국을 병원권·로컬 구분 없이 가까운 순으로 둔다.
+// 중소병원에는 순번을 정해 둔 약국이 반경 밖이어도 더해서, 예전에 정한 순번이 목록에서 사라지지 않게 한다
+const phKey = z => (z.hosp ? 'p:' : 'l:') + z.p.id;
+function placeItems(kind, c){
+  const items = phNear(c, placeR(kind, c));
+  if (kind === 'm') (state.rank['m:' + c.id] || []).forEach(key => {
+    const p = key && phByKey(key);
+    if (p && !items.some(z => phKey(z) === key)) items.push({ p, d: gap(c, p), hosp: key[0] === 'p' });
+  });
+  return items.sort((a, b) => a.d - b.d);
+}
+// 중소병원(m)과 로컬 의원(c)의 상세. 중소병원은 병원권처럼 순번을 정할 수 있고, 순번 약국을 맨 앞에 둔다
 function renderPlace(kind, id){
-  const c = place(kind, id), items = phNear(c, 300), mid = kind === 'm', rno = 'm:' + id;
-  const pk = z => (z.hosp ? 'p:' : 'l:') + z.p.id;
+  const c = place(kind, id), mid = kind === 'm', rno = 'm:' + id, R = placeR(kind, c), items = placeItems(kind, c);
+  const inR = items.filter(z => z.d <= R).length, pk = phKey;
   if (mid) items.sort((a, b) => (rankNo(rno, pk(a)) || 99) - (rankNo(rno, pk(b)) || 99));
   const d = document.getElementById('detail');
   d.innerHTML = `
@@ -606,31 +659,30 @@ function renderPlace(kind, id){
     <h2>${esc(c.n)}</h2>
     <p class="addr"><span class="tier ${mid ? 'mid' : 'loc'}">${mid ? esc(c.typ) : '의원'}</span>${esc(c.a)}</p>
     <p class="addr">${c.t ? esc(c.t) : '전화번호 없음'}${c.o ? `<span style="margin-left:10px">개설 ${esc(c.o)}</span>` : ''}</p>
-    <dl class="facts ${mid ? 'mid' : 'loc'}">
+    <dl class="facts n3 ${mid ? 'mid' : 'loc'}">
       <div class="hl"><dt>총 의사</dt><dd>${c.d}</dd></div>
       <div><dt>의과전문의</dt><dd>${c.sp}</dd></div>
-      <div><dt>100m 약국</dt><dd>${c.p100}</dd></div>
-      <div><dt>300m 약국</dt><dd>${items.length}</dd></div>
+      <div><dt>${R}m 약국</dt><dd>${inR}</dd></div>
     </dl>
     <div class="links">
       <a class="btn naver" href="${nmapUrl(locQ(c))}" target="_blank" rel="noopener">네이버지도에서 ${mid ? '병원' : '의원'} 보기</a>
       <a class="btn" href="${nmapUrl(locQa(c))}" target="_blank" rel="noopener">주소로 보기</a>
     </div>
     ${memoBox(kind, id)}
-    <div class="sec-h"><h3>300m 안 약국 ${items.length}곳</h3><span>병원권에 속한 약국에는 '병원권' 표시가 붙습니다.</span></div>
+    <div class="sec-h"><h3>${R}m 안 약국 ${inR}곳</h3><span>병원권에 속한 약국에는 '병원권' 표시가 붙습니다.${items.length > inR ? ' 순번을 정한 반경 밖 약국도 함께 보여 줍니다.' : ''}</span></div>
     ${mid && (state.rank[rno] || []).some(Boolean) ? '<p class="facts-note">번호가 붙은 약국은 접근성을 기준으로 직접 정한 순번이고, 나머지 약국은 직선거리순입니다.</p>' : ''}
-    <div class="scale" aria-hidden="true"><span style="left:0;transform:none">0</span><span style="left:33.3%">100m</span><span style="left:100%;transform:translateX(-100%)">300m</span></div>
+    <div class="scale" aria-hidden="true"><span style="left:0;transform:none">0</span><span style="left:50%">${Math.round(R / 2)}m</span><span style="left:100%;transform:translateX(-100%)">${R}m</span></div>
     <ol class="ph-list">${items.map(z => { const {p, d, hosp} = z, k = mid ? rankNo(rno, pk(z)) : 0;
       return `<li class="ph-item" id="${hosp ? 'ph' : 'lp'}-${p.id}">
-        <button type="button" class="ph-top" data-${hosp ? 'focus' : 'lfocus'}="${p.id}"><span>${k ? `<span class="ph-rank">${k}번</span>` : ''}<span class="ph-name">${esc(p.n)}</span>${whTag((hosp ? 'p:' : 'l:') + p.id)}${hosp ? '<span class="ph-grp">병원권</span>' : ''}${p.ps ? `<span class="ph-staff">약사 ${p.ps}</span>` : ''}${p.hs ? `<span class="ph-staff han">한약사 ${p.hs}</span>` : ''}</span><span class="ph-dist">${d}m</span></button>
-        <div class="ruler r300" aria-hidden="true"><i style="width:${Math.min(100, d / 3)}%"></i></div>
+        <button type="button" class="ph-top" data-${hosp ? 'focus' : 'lfocus'}="${p.id}"><span>${k ? `<span class="ph-rank">${k}번</span>` : ''}<span class="ph-name">${esc(p.n)}</span>${whTag((hosp ? 'p:' : 'l:') + p.id)}${p.pk === 'h' ? '<span class="ph-grp">병원권</span>' : ''}${p.ps ? `<span class="ph-staff">약사 ${p.ps}</span>` : ''}${p.hs ? `<span class="ph-staff han">한약사 ${p.hs}</span>` : ''}</span><span class="ph-dist">${d}m</span></button>
+        <div class="ruler rz" aria-hidden="true"><i style="width:${Math.min(100, d / R * 100)}%"></i></div>
         <div class="ph-sub">${esc(p.a)}</div>
         <div class="ph-sub">${p.t ? `<b>${esc(p.t)}</b>` : '전화번호 없음'}<span style="margin-left:10px">개설 ${esc(p.o)}</span></div>
         <div class="ph-links"><a href="${nmapUrl(hosp ? p.q : locQ(p))}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(hosp ? p.qa : locQa(p))}" target="_blank" rel="noopener">주소로 보기</a></div>
         ${memoBox(hosp ? 'p' : 'l', p.id)}
         ${mid && state.edit ? rankBtns(rno, pk(z)) : ''}
       </li>`; }).join('')}</ol>
-    <p class="note">의사·약사 수는 심평원 신고 인원입니다. 중소병원과 로컬 의원·약국은 ${LOC.basis.replace(/-/g, '.')} 기준이고, 병원권 약국은 ${DATA.basis.replace(/-/g, '.')} 기준이라 그사이 문을 열거나 닫은 곳은 다를 수 있습니다. 거리는 심평원 좌표 기준 직선거리입니다.</p>`;
+    <p class="note">의사·약사 수는 심평원 신고 인원입니다. 중소병원과 로컬 의원·약국은 ${LOC.basis.replace(/-/g, '.')} 기준이고, 병원권 약국은 ${DATA.basis.replace(/-/g, '.')} 기준이라 그사이 문을 열거나 닫은 곳은 다를 수 있습니다. 거리는 지도에 표시된 위치(네이버 업소 위치, 없으면 심평원 좌표) 기준 직선거리입니다.</p>`;
   document.getElementById('list').hidden = true;
   d.hidden = false;
   document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
@@ -643,14 +695,17 @@ function renderPlace(kind, id){
 }
 
 /* ---------- selection ---------- */
-function addSelRings(x, radii){
+// radii[0]은 굵은 실선(기준 거리), 나머지는 점선이다. view(m)를 주면 그 반경이 화면에 들어오게 맞추고, 없으면 첫 고리에 맞춘다
+function addSelRings(x, radii, view){
   const c = new naver.maps.LatLng(x.y, x.x);
   radii.forEach((r, i) => state.selRings.push(new naver.maps.Circle({
     map: state.map, center: c, radius: r, clickable: false,
     strokeColor: '#C98A00', strokeOpacity: .95, strokeWeight: i === 0 ? 2 : 1, strokeStyle: i === 0 ? 'solid' : 'shortdash',
     fillColor: '#FFE7A3', fillOpacity: i === 0 ? .14 : 0, zIndex: 50
   })));
-  state.map.fitBounds(state.selRings[0].getBounds());
+  if (!view) return state.map.fitBounds(state.selRings[0].getBounds());
+  const dy = view / 110574, dx = view / (111320 * Math.cos(x.y * Math.PI / 180));
+  state.map.fitBounds(naver.maps.LatLngBounds.bounds(new naver.maps.LatLng(x.y - dy, x.x - dx), new naver.maps.LatLng(x.y + dy, x.x + dx)));
 }
 function select(no){
   clearSel(false);
@@ -662,38 +717,64 @@ function select(no){
   document.getElementById('map').classList.add('has-sel');
   phOf(no).forEach(({p}) => state.pm[p.id].el.classList.add('in'));
   markRanks(no);
-  addSelRings(HN[no], [500, 300, 100]);
+  addSelRings(HN[no], [HN[no].zr], Math.max(300, HN[no].zr + 100));   // 병원 반경 고리 하나, 화면은 그 밖의 로컬 약국과 의원도 보이게 넓힌다
 }
-// 캡슐 한쪽 색은 약국이 딸린 시설 마커의 색을 따른다. h: 병원권, m: 중소병원 300m 안, l: 로컬(나머지). PILL_D는 윤곽선 색이다
-const PILL_C = { h: '#24479A', m: '#A8432A', l: '#5B45A8' }, PILL_D = { h: '#142750', m: '#5C251A', l: '#32265C' };
+// 캡슐 한쪽 색은 약국이 딸린 시설 마커의 색을 따른다. h: 병원권 병원 ZONE 안, m: 중소병원 ZONE 안, l: 로컬(나머지). PILL_D는 윤곽선 색이다
+const PILL_C = { h: '#24479A', m: '#A8432A', l: '#17753F' }, PILL_D = { h: '#142750', m: '#5C251A', l: '#0B3D1F' };
 const PILL_Y = '#F6B80A', PILL_ROT = -50, PILL_S = 1.45;   // PILL_S: 캡슐 크기 배율(모양, 간격, 클릭 범위가 함께 커진다)
 // 확대 17보다 더 확대하면 지도 건물이 커지는 만큼 캡슐도 단계마다 1.2배씩 키운다(최대 2.1배). 그 아래는 그대로다
 const pillZoom = z => z > 17 ? Math.min(1.2 ** (z - 17), 2.1) : 1;
-// 약국이 어느 종류에 속하는지(pk)를 정한다. 병원권 약국이면 h, 아니면 중소병원 300m 안이면 m, 그 밖에는 l이다(linksOf와 같은 우선순위)
-P.forEach(p => { p.pk = 'h'; });
-// 중소병원 300m 안 약국(pk 'm')은 '중소병원' 묶음, 나머지 로컬 약국(pk 'l')은 '로컬' 묶음을 켰을 때 보인다
-const locPhOn = p => state.groups[p.pk === 'm' ? 'mid' : 'loc'];
+// 약국이 어느 종류에 속하는지(pk)를 정한다. 병원권 병원 반경 안이면 h(applyZones), 아니면 의사 MID_MIN명 이상인 중소병원 반경 안이면 m, 그 밖에는 l이다.
+// 약국은 자기 종류의 묶음(병원권·중소병원·로컬)을 켰을 때 보인다
+const phOn = p => state.groups[p.pk === 'h' ? 'hosp' : p.pk === 'm' ? 'mid' : 'loc'];
 function assignKind(list, mids){
-  const kx = 111320 * Math.cos(35.3 * Math.PI / 180), ky = 110574;
-  list.forEach(p => { p.pk = mids.some(q => Math.hypot((p.x - q.x) * kx, (p.y - q.y) * ky) <= 300) ? 'm' : 'l'; });
+  const kx = 111320 * Math.cos(35.3 * Math.PI / 180), ky = 110574, big = mids.filter(q => q.d >= MID_MIN);
+  list.forEach(p => { p.pk = big.some(q => Math.hypot((p.x - q.x) * kx, (p.y - q.y) * ky) <= q.zr) ? 'm' : 'l'; });
 }
 // 약사 수(한 명 이상으로 본다, 최대 8)만큼 캡슐(길이 15, 두께 6.4)을 기울여 한 줄로 나란히 놓는다.
 // 한 줄에 4개까지, 캡슐은 오른쪽으로 8.2px씩 옮겨 이웃과 윤곽이 거의 맞닿고, 5개째부터 다음 줄(17px 아래)이다.
-// 좌표는 전체 묶음의 가운데를 (0, 0)으로 한 값이고, hw·hh는 묶음의 가로·세로 반지름이다
-const pillMemo = {};
-function pillLayout(ps){
-  const n = Math.min(Math.max(ps || 1, 1), 8);
-  if (pillMemo[n]) return pillMemo[n];
+// 좌표는 전체 묶음의 가운데를 (0, 0)으로 한 값이고, hw·hh는 묶음의 가로·세로 반지름이다.
+// 창고형약국의 💩도 같은 배치(한 줄 4개, 줄바꿈)를 간격만 달리해서 쓴다(gridLayout)
+const layoutMemo = {};
+function gridLayout(kind, ps, dx, dy, padX, padY){
+  const n = Math.min(Math.max(ps || 1, 1), 8), key = kind + n;
+  if (layoutMemo[key]) return layoutMemo[key];
   const pts = [];
   for (let i = 0; i < n; i++) {
     const r = Math.floor(i / 4), c = i % 4, k = Math.min(4, n - r * 4);
-    pts.push([(c * 8.2 + (4 - k) * 4.1) * PILL_S, r * 17 * PILL_S]);
+    pts.push([c * dx + (4 - k) * dx / 2, r * dy]);
   }
   const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-  return pillMemo[n] = { n, pts: pts.map(p => [p[0] - cx, p[1] - cy]),
-    hw: (Math.max(...xs) - Math.min(...xs)) / 2 + 9 * PILL_S, hh: (Math.max(...ys) - Math.min(...ys)) / 2 + 10 * PILL_S };
+  return layoutMemo[key] = { n, pts: pts.map(p => [p[0] - cx, p[1] - cy]),
+    hw: (Math.max(...xs) - Math.min(...xs)) / 2 + padX, hh: (Math.max(...ys) - Math.min(...ys)) / 2 + padY };
 }
+const pillLayout = ps => gridLayout('pill', ps, 8.2 * PILL_S, 17 * PILL_S, 9 * PILL_S, 10 * PILL_S);
+// 창고형약국은 캡슐 대신 약사 수만큼 💩를 놓는다. 이모지는 글꼴마다 그림이 차지하는 크기가 달라서(글자 상자보다 작다),
+// 캔버스에 한 번 그려 실제로 색이 칠해진 영역(폭 w, 높이 h, 글자 상자 가운데에서 벗어난 정도 ox·oy)을 재고
+// 그림끼리 1px 틈만 두고 맞닿게 놓는다
+const POOP_PX = 16, POOP_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+let poopInkMemo = null;
+function poopInk(){
+  if (poopInkMemo) return poopInkMemo;
+  const k = 4, S = POOP_PX * k, side = Math.ceil(S * 2), g = document.createElement('canvas');
+  g.width = g.height = side;
+  const x = g.getContext('2d', { willReadFrequently: true });
+  x.font = `${S}px ${POOP_FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💩', side / 2, side / 2);
+  const d = x.getImageData(0, 0, side, side).data;
+  let x0 = side, x1 = -1, y0 = side, y1 = -1;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 32) { const p = (i - 3) / 4, px = p % side, py = (p - px) / side;
+    if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; }
+  // 그려지지 않는 환경이면(이모지 글꼴 없음) 글자 크기를 그대로 쓴다
+  return poopInkMemo = x1 < 0 ? { w: POOP_PX, h: POOP_PX, ox: 0, oy: 0 }
+    : { w: (x1 - x0 + 1) / k, h: (y1 - y0 + 1) / k, ox: ((x0 + x1 + 1) / 2 - side / 2) / k, oy: ((y0 + y1 + 1) / 2 - side / 2) / k };
+}
+const poopLayout = ps => { const k = poopInk(); return gridLayout('poop', ps, k.w + 1, k.h + 1, k.w / 2 + 1, k.h / 2 + 1); };
+const poopHtml = ps => { const L = poopLayout(ps), k = poopInk();
+  return `<span class="wp" style="width:${L.hw * 2}px;height:${L.hh * 2}px" aria-hidden="true">${L.pts.map(([x, y]) => `<i style="left:${L.hw + x - k.ox}px;top:${L.hh + y - k.oy}px">💩</i>`).join('')}</span>`; };
+// 약국 마커 그림: 창고형약국이면 💩, 아니면 캡슐. key는 'p:약국 id' 또는 'l:로컬 약국 id'다
+const pharmIcon = (key, p) => isWh(key) ? poopHtml(p.ps) : pillSvg(p.ps, p.tilt, p.pk);
+const phTitle = (key, p) => `${p.n} (약사 ${p.ps}명${p.hs ? `, 한약사 ${p.hs}명` : ''}${isWh(key) ? ', 창고형약국' : ''})`;
 // 가까이 붙은 약국은 기울기를 서로 반대로 해 구분한다. tilt는 -1(기본)과 1(좌우를 뒤집은 기울기)이다.
 // 40m 안에 이미 정한 약국이 있으면 그 이웃들과 반대쪽을 고르고, 없으면 기본이다. fixed는 이미 정해 둔 약국들이다
 const TILT_M = 40;
@@ -735,6 +816,11 @@ const POI_READY = VER_READY.then(ver => getData('poi', ver)).then(r => r.ok ? r.
   H.forEach(h => { const v = poi['h:' + h.no]; if (v) { h.x = v[0]; h.y = v[1]; } });
   P.forEach(p => { const v = poi['p:' + p.id]; if (v) { p.x = v[0]; p.y = v[1]; } });
   assignTilt(P, []);   // 좌표가 바뀌었으니 가까운 약국끼리 기울기를 다시 정한다
+  // 병원권 판정과 목록의 거리도 지도에 보이는 좌표 기준으로 다시 잰다. 심평원 좌표는 병원 건물의 어느 점인지 알 수 없어서,
+  // 지도의 반경 고리·캡슐과 어긋나면 고리 안의 약국이 병원권이 아니거나 그 반대가 된다
+  P.forEach(p => { p.h = p.h.map(([no]) => [no, gap(HN[no], p)]).sort((a, b) => a[1] - b[1]); });
+  applyZones();
+  if (!document.getElementById('list').hidden) { renderSummary(); renderRows(); }
   return poi;
 });
 function pillSvg(ps, tilt, pk){
@@ -742,10 +828,21 @@ function pillSvg(ps, tilt, pk){
   const g = L.pts.map(([x, y]) => `<g transform="translate(${L.hw + x} ${L.hh + y}) scale(${PILL_S})${tilt > 0 ? ' scale(-1 1)' : ''} rotate(${PILL_ROT})"><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="#fff" stroke="#fff" stroke-width="2.4"/><path d="M0 -3.2H-4.3A3.2 3.2 0 0 0 -4.3 3.2H0Z" fill="${c}"/><path d="M0 -3.2H4.3A3.2 3.2 0 0 1 4.3 3.2H0Z" fill="${PILL_Y}"/><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="none" stroke="${k}" stroke-width=".7"/></g>`).join('');
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${g}</svg>`;
 }
+// 병원권 약국(DATA.ph)의 마커를 종류(pk)에 맞게 다시 그린다. 병원권(hz)만 병원권 묶음을 끄면 숨고, ZONE 밖 약국은 자기 묶음(중소병원·로컬)을 따른다.
+// 로컬 자료가 지도보다 늦게 와서 pk가 바뀌거나 묶음을 켜고 끌 때마다 부른다
+function paintPm(p){
+  const o = state.pm[p.id]; if (!o) return;
+  const rk = o.el.querySelector('.pm-rank');   // 순번 글자는 그대로 둔다
+  o.el.classList.add('pm');
+  o.el.classList.toggle('hz', p.pk === 'h');
+  o.el.title = phTitle('p:' + p.id, p);
+  o.el.innerHTML = `${pharmIcon('p:' + p.id, p)}<b class="pm-rank">${rk ? rk.textContent : ''}</b>`;
+  o.el.style.display = phOn(p) ? '' : 'none';
+}
 function addLocMarker(kind, x){
   const el = document.createElement('div');
   if (kind !== 'l') { el.className = `hm sel ${kind === 'm' ? 'mm' : 'cm'}`; el.innerHTML = `<span class="hm-dot"></span><span class="hm-label">${esc(x.n)}<b>의사 ${x.d}</b></span>`; }
-  else { el.className = 'pm lp in'; el.title = `${x.n} (약사 ${x.ps}명${x.hs ? `, 한약사 ${x.hs}명` : ''})`; el.innerHTML = `${pillSvg(x.ps, x.tilt, x.pk)}<b class="pm-rank"></b>`; }
+  else { el.className = 'pm lp in'; el.title = phTitle('l:' + x.id, x); el.innerHTML = `${pharmIcon('l:' + x.id, x)}<b class="pm-rank"></b>`; }
   const m = new naver.maps.Marker({ map: state.map, position: new naver.maps.LatLng(x.y, x.x), zIndex: kind === 'l' ? 70 : 1000,
     icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
   if (kind === 'l') naver.maps.Event.addListener(m, 'click', () => focusLoc(x.id, false));
@@ -758,13 +855,13 @@ function selectPlace(kind, id){
   if (!state.map) return;
   const c = place(kind, id);
   document.getElementById('map').classList.add('has-sel');
-  phNear(c, 300).forEach(({p, hosp}) => hosp ? state.pm[p.id].el.classList.add('in') : addLocMarker('l', p));
+  placeItems(kind, c).forEach(({p, hosp}) => hosp ? state.pm[p.id].el.classList.add('in') : addLocMarker('l', p));
   addLocMarker(kind, c);
   markMemos();
   if (kind === 'm') markRanks('m:' + id);
-  addSelRings(c, [300, 100]);
+  addSelRings(c, [placeR(kind, c)], Math.max(300, placeR(kind, c) + 100));   // 고리는 병원보다 크지 않게 반경 하나만, 화면은 주변이 보이게 넓힌다
 }
-// 약국 상세에서는 지도에 그 약국을 강조하고, 연계 기준 거리(병원권 약국은 500m까지)를 고리로 그린다
+// 약국 상세에서는 지도에 그 약국을 강조하고, 의원과 연계하는 기준 거리(ZONE)를 고리로 그린다
 function selectPh(key){
   clearSel();
   state.psel = key;
@@ -773,7 +870,7 @@ function selectPh(key){
   const p = phByKey(key), id = key.slice(2);
   if (key[0] === 'p') state.pm[id].el.classList.add('focus');
   else { addLocMarker('l', p); state.lmk[0].el.classList.add('focus'); }
-  addSelRings(p, key[0] === 'p' ? [500, 300, 100] : [300, 100]);
+  addSelRings(p, [ZONE], 300);
   // 지도에서도 약국 이름·약사 수·전화를 바로 볼 수 있게 정보창을 연다
   if (key[0] === 'p') openPhInfo(id); else focusLoc(id, false);
 }
@@ -782,7 +879,8 @@ function tapPh(key){
   if (!state.sel && !state.lsel) return selectPh(key);
   const id = key.slice(2);
   if (key[0] === 'l') return focusLoc(id, false);
-  if (state.sel && !PH[id].h.some(z => z[0] === state.sel)) select(PH[id].h[0][0]);
+  // 보고 있는 병원의 병원권 약국이 아니어도 병원권 약국이면 그 약국의 병원으로 옮기고, 로컬로 분류된 약국이면 지금 병원을 그대로 둔다
+  if (state.sel && PH[id].pk === 'h' && !inZoneOf(PH[id], state.sel)) select(PH[id].h.find(z => z[1] <= HN[z[0]].zr)[0]);
   focusPh(+id, false);
 }
 function clearSel(){
@@ -826,7 +924,7 @@ function openPhInfo(id){
   const p = PH[id];
   const rows = p.h.map(z => { const k = rankNo(z[0], id);
     return `${esc(HN[z[0]].s)} <span class="d">${z[1]}m</span>${k ? ` <span class="rk">${k}번</span>` : ''}`; }).join('<br>');
-  const edit = state.edit && p.h.some(z => z[0] === state.sel) ? rankBtns(state.sel, id, `${esc(HN[state.sel].s)} 순번`) : '';
+  const edit = state.edit && inZoneOf(p, state.sel) ? rankBtns(state.sel, id, `${esc(HN[state.sel].s)} 순번`) : '';
   const staff = [p.ps ? `약사 ${p.ps}명` : '', p.hs ? `한약사 ${p.hs}명` : ''].filter(Boolean).join(', ');
   state.iw.setContent(`<div class="iw"><strong>${esc(p.n)}${whTag('p:' + id)}</strong>${staff}<br>${p.t ? esc(p.t) + '<br>' : ''}${rows}
     <div style="margin-top:6px"><a href="${nmapUrl(p.q)}" target="_blank" rel="noopener">네이버지도</a><a href="${nmapUrl(p.qa)}" target="_blank" rel="noopener">주소로 보기</a></div>${state.memo && state.memo.p[id] ? `<div class="iw-memo">${esc(state.memo.p[id])}</div>` : ''}${edit}</div>`);
@@ -873,26 +971,13 @@ function markMemos(){
   if (state.dots) state.dots.draw();
   markWarehouses();
 }
-// 창고형약국은 몇 곳뿐이라 HTML 마커로 띄운다. 약국 표시나 그 약국의 묶음을 끄면 함께 숨긴다
+// 창고형약국의 💩는 약국 마커(병원권·중소병원 근처는 paintPm, 로컬 점은 Dots.draw)가 캡슐 대신 그린다.
+// 여기서는 지금 보이는 창고형약국이 있을 때만 범례를 보여 준다
 function markWarehouses(){
   if (!state.map) return;
   const showPh = document.getElementById('optPh').checked;
   const all = P.map(p => 'p:' + p.id).concat(LOC.p.map(p => 'l:' + p.id));
-  const keys = !showPh ? [] : all.filter(k => isWh(k) && (k[0] === 'p' ? state.groups.hosp : locPhOn(LOC.P[k.slice(2)])));
-  document.getElementById('lgWh').hidden = !keys.length;
-  const sig = keys.join();   // 로컬 자료가 늦게 와도 그때 키가 늘어나서 다시 그린다
-  if (sig === state.whSig) return;
-  state.whSig = sig;
-  state.wm.forEach(m => m.setMap(null));
-  state.wm = keys.map(k => {
-    const p = whOf(k).p;
-    const el = document.createElement('div');
-    el.className = 'wm'; el.textContent = '💩'; el.title = `${p.n} (창고형약국)`;
-    const m = new naver.maps.Marker({ map: state.map, position: new naver.maps.LatLng(p.y, p.x), zIndex: 90,
-      icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
-    naver.maps.Event.addListener(m, 'click', () => tapPh(k));
-    return m;
-  });
+  document.getElementById('lgWh').hidden = !(showPh && all.some(k => isWh(k) && phOn(phByKey(k))));
 }
 function setMemo(kind, key, text){
   const part = { ...state.memo[kind] };
@@ -1062,6 +1147,8 @@ fetch('rank.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.jso
 }).catch(() => {});
 fetch('wh.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(w => {
   state.wh = w;
+  P.forEach(paintPm);   // 직접 지정한 창고형약국도 💩로 바꾼다
+  if (state.dots) state.dots.draw();
   refreshRank();
 }).catch(() => {});
 store.set(TOKEN_KEY, null);   // 예전 방식으로 이 브라우저에 오래 남겨 둔 토큰을 지운다
@@ -1073,8 +1160,12 @@ Promise.all([VER_READY.then(ver => getData('local', ver)).then(r => r.ok ? r.jso
   [['m', 'm'], ['c', 'c'], ['p', 'l']].forEach(([k, pre]) => L[k].forEach(x => { const v = poi[pre + ':' + x.id]; if (v) { x.x = v[0]; x.y = v[1]; } }));
   L.m.concat(L.c, L.p).forEach(x => { x.m = merc(x.x, x.y); });
   assignTilt(L.p, P);   // 병원권 약국과 가까운 로컬 약국도 그 약국과 반대로 기울인다
-  assignKind(L.p, L.m);
+  L.m.forEach(m => { m.zr = zoneR(m.d); });   // 중소병원은 의사가 적어 ZONE과 거의 같다
   Object.assign(LOC, L, { M: byId(L.m), C: byId(L.c), P: byId(L.p) });
+  applyZones();   // 로컬 의원 자료가 와야 병원권과 의원권에 함께 든 약국을 가를 수 있다
+  assignKind(L.p, L.m);
+  assignKind(P.filter(p => p.pk !== 'h'), L.m);   // 병원권 병원에서 멀거나 의원에 딸린 약국도 중소병원 반경 안이면 중소병원 약국이다
+  P.forEach(paintPm);
   renderSummary(); renderRows(); addDots(); markWarehouses();
 }).catch(() => { LOC.err = true; renderSummary(); renderRows(); });
 
@@ -1116,14 +1207,22 @@ function addDots(){
         this.pts.push({ px, py, rad, kind, id: x.id });
         if (M && M[kind][x.id]) { memo.moveTo(px + rad + 3, py - rad); memo.arc(px + rad, py - rad, 3, 0, 7); }
       };
-      // 확대(15 이상)하면 로컬 약국도 약사 수만큼 캡슐로 그리고, 그보다 멀리서는 점으로 그린다
-      const pills = [];
+      // 확대(15 이상)하면 로컬 약국도 약사 수만큼 캡슐로 그리고, 그보다 멀리서는 점으로 그린다.
+      // 창고형약국은 캡슐 대신 약사 수만큼 💩를 그리고, 멀리서는 💩 하나로 그린다
+      const pills = [], poops = [];
       if (document.getElementById('optPh').checked) LOC.p.forEach(p => {
-        if (!locPhOn(p)) return;
-        if (zoom < 15) return put(p, 'l', r * .85, lp[p.pk || 'l']);
+        if (!phOn(p)) return;
+        const wh = isWh('l:' + p.id);
+        if (zoom < 15 && !wh) return put(p, 'l', r * .85, lp[p.pk || 'l']);
         const zs = pillZoom(zoom);
         const px = this.px(p.m), py = this.py(p.m);
         if (px < -20 || py < -20 || px > W + 20 || py > Hh + 20) return;
+        if (wh) {
+          const L = poopLayout(zoom < 15 ? 1 : p.ps), half = L.hw * zs;
+          poops.push([px, py, L, zs]); this.pts.push({ px, py, rad: half, kind: 'l', id: p.id });
+          if (M && M.l[p.id]) { memo.moveTo(px + half + 3, py - L.hh * zs); memo.arc(px + half, py - L.hh * zs, 3, 0, 7); }
+          return;
+        }
         const L = pillLayout(p.ps), half = L.hw * zs;
         pills.push([px, py, L, p.tilt, p.pk || 'l', zs]); this.pts.push({ px, py, rad: half, kind: 'l', id: p.id, pl: { L, t: p.tilt, zs } });
         if (M && M.l[p.id]) { memo.moveTo(px + half + 3, py - L.hh * zs); memo.arc(px + half, py - L.hh * zs, 3, 0, 7); }
@@ -1132,7 +1231,7 @@ function addDots(){
       if (state.groups.mid) LOC.m.forEach(x => put(x, 'm', r * 1.25, md));
       g.lineWidth = zoom >= 11 ? 1.5 : 1;
       ['m', 'l'].forEach(k => { g.fillStyle = '#fff'; g.strokeStyle = PILL_C[k]; g.fill(lp[k]); g.stroke(lp[k]); });
-      g.fillStyle = '#5B45A8'; g.strokeStyle = '#fff'; g.fill(cl); if (zoom >= 11) g.stroke(cl);
+      g.fillStyle = PILL_C.l; g.strokeStyle = '#fff'; g.fill(cl); if (zoom >= 11) g.stroke(cl);
       g.fillStyle = '#A8432A'; g.fill(md); if (zoom >= 11) g.stroke(md);
       if (zoom >= 13) { g.save(); g.strokeStyle = '#fff'; g.lineWidth = zoom >= 15 ? 2 : 1.5; g.stroke(mx); g.restore(); }
       g.fillStyle = '#C98A00'; g.fill(memo);
@@ -1144,6 +1243,12 @@ function addDots(){
         g.beginPath(); g.roundRect(-7.5, -3.2, 15, 6.4, 3.2); g.lineWidth = .7; g.strokeStyle = PILL_D[pk]; g.stroke();
         g.restore();
       }));
+      if (poops.length) {
+        g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowOffsetY = 1; g.shadowBlur = 1;
+        const ink = poopInk();
+        poops.forEach(([x, y, L, zs]) => { g.font = `${POOP_PX * zs}px ${POOP_FONT}`; L.pts.forEach(([dx, dy]) => g.fillText('💩', x + (dx - ink.ox) * zs, y + (dy - ink.oy) * zs)); });
+        g.restore();
+      }
     }
     px(m){ return (m[0] - this.m0[0]) * this.kx + this.w / 2; }
     py(m){ return (m[1] - this.m0[1]) * this.ky + this.h / 2; }
@@ -1197,7 +1302,7 @@ function initMap(){
 
   H.forEach(h => {
     const pos = new naver.maps.LatLng(h.y, h.x);
-    state.rings[h.no] = new naver.maps.Circle({ map, center: pos, radius: 500, clickable: false,
+    state.rings[h.no] = new naver.maps.Circle({ map, center: pos, radius: h.zr, clickable: false,
       strokeColor: '#24479A', strokeOpacity: .55, strokeWeight: 1, strokeStyle: 'shortdash',
       fillColor: '#24479A', fillOpacity: .04, zIndex: 10 });
     const el = document.createElement('div');
@@ -1210,11 +1315,10 @@ function initMap(){
   });
   P.forEach(p => {
     const el = document.createElement('div');
-    el.className = 'pm'; el.title = `${p.n} (약사 ${p.ps}명${p.hs ? `, 한약사 ${p.hs}명` : ''})`;
-    el.innerHTML = `${pillSvg(p.ps, p.tilt, p.pk)}<b class="pm-rank"></b>`;
     const m = new naver.maps.Marker({ map, position: new naver.maps.LatLng(p.y, p.x), zIndex: 60, icon: { content: el, anchor: new naver.maps.Point(0, 0) } });
     naver.maps.Event.addListener(m, 'click', () => tapPh('p:' + p.id));
     state.pm[p.id] = { m, el };
+    paintPm(p);
   });
   const zoomClass = z => { mapEl.classList.toggle('far', z < 12); mapEl.style.setProperty('--pz', pillZoom(z)); };
   naver.maps.Event.addListener(map, 'zoom_changed', zoomClass);
@@ -1240,6 +1344,7 @@ const setGroup = (g, on) => {
   const selGroup = state.sel ? 'hosp' : state.lsel ? (state.lsel.kind === 'm' ? 'mid' : 'loc') : null;
   if (selGroup === g) clearSel();
   if (!state.sel && !state.lsel && !state.psel) renderList();
+  P.forEach(paintPm);   // ZONE 밖 병원권 병원 약국은 병원권이 아니라 로컬·중소병원 묶음을 따른다
   if (state.dots) state.dots.draw();
   markWarehouses();
 };
