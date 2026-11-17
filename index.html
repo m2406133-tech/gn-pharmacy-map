@@ -226,6 +226,10 @@ a{color:var(--hosp)}
 .ad-dlg{position:fixed;inset:12px auto auto calc(var(--panel-w) + 12px);margin:0;width:min(420px,calc(100vw - var(--panel-w) - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:50}
 .ad-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:move;touch-action:none;user-select:none}
 .ad-head button{border:0;background:none;font-size:18px;padding:2px 6px}
+.ad-head .ad-fold{font-size:12.5px;color:#555}
+/* 접으면 제목줄만 남긴다. 입력과 결과는 그대로 둔다 */
+.ad-dlg.folded form>:not(.ad-head),.ad-dlg.folded #adMsg,.ad-dlg.folded #adList{display:none}
+.ad-dlg.folded .ad-head{margin-bottom:0}
 /* 칸은 넣을 값 길이만큼만 넓히고 한 줄에 여러 개를 흘려 놓는다(숫자는 4~5자리, 선택은 가장 긴 선택지 폭) */
 .ad-grid{display:flex;flex-wrap:wrap;gap:8px 12px}
 .ad-grid label{display:flex;flex-direction:column;gap:2px;font-size:12.5px}
@@ -250,7 +254,7 @@ a{color:var(--hosp)}
 .ad-score{float:right;font-weight:600}
 .ad-marks{display:block;font-size:12.5px}
 .ad-list small{display:block;color:#555}
-@media (max-width: 860px){ .ad-dlg{inset:auto 0 0 0 !important;width:100vw;height:48dvh;max-height:48dvh;border-radius:10px 10px 0 0} .ad-head{cursor:auto} }
+@media (max-width: 860px){ .ad-dlg{inset:auto 0 0 0 !important;width:100vw;height:48dvh;max-height:48dvh;border-radius:10px 10px 0 0} .ad-dlg.folded{height:auto} .ad-head{cursor:auto} }
 @media (max-width: 860px){
   body{grid-template-columns:1fr;grid-template-rows:52dvh 1fr;overflow:hidden}
   #mapWrap{grid-row:1}
@@ -296,7 +300,7 @@ a{color:var(--hosp)}
     <div id="editBar"></div>
     <dialog id="adDlg" class="ad-dlg" aria-labelledby="adTitle">
       <form id="adForm">
-        <div class="ad-head"><strong id="adTitle">매물 찾기</strong><button type="button" data-act="adclose" aria-label="닫기">✕</button></div>
+        <div class="ad-head"><strong id="adTitle">매물 찾기</strong><span><button type="button" class="ad-fold" data-act="adfold" aria-expanded="true">접기</button><button type="button" data-act="adclose" aria-label="닫기">✕</button></span></div>
         <label class="ad-raw">광고 원문<textarea name="raw" rows="5" placeholder="광고 글을 그대로 붙여 넣으면 AI가 조건을 읽고 어느 약국인지 특정합니다"></textarea></label>
         <div class="ad-key" id="adKeyRow" hidden><input type="password" id="adKey" placeholder="Gemini API 키 (AIza…)" autocomplete="off" aria-label="Gemini API 키"><button type="button" data-act="adkey">키 저장</button></div>
         <div class="ad-run"><button type="button" class="ad-go" data-act="adai">AI로 특정</button><button type="button" data-act="adreset">새 광고</button><button type="button" data-act="adkeyshow">AI 키 바꾸기</button></div>
@@ -1194,6 +1198,7 @@ document.addEventListener('click', e => {
   else if (act === 'done') endEdit();
   else if (act === 'ad') openAd();
   else if (act === 'adclose') document.getElementById('adDlg').close();
+  else if (act === 'adfold') adFold(!document.getElementById('adDlg').classList.contains('folded'));
   else if (act === 'adai') adAiRun();
   else if (act === 'adkey') adKeySave();
   else if (act === 'adreset') { adReset(); document.getElementById('adForm').elements.raw.focus(); }
@@ -1245,8 +1250,14 @@ function adRender(rs){
     <span class="ad-marks">${r.marks.map(m => `${esc(m.k)} ${AD_SYM[m.v]}`).join(' · ')}</span>
     <small>${esc(r.marks.map(m => m.t).join(', '))}</small></button></li>`).join('');
 }
+// 매물 찾기 패널을 제목줄만 남기고 접거나 다시 편다. 지도를 넓게 보려고 접는 것이라 입력과 결과는 지우지 않는다
+function adFold(on){
+  const d = document.getElementById('adDlg'), b = d.querySelector('.ad-fold');
+  d.classList.toggle('folded', on); b.textContent = on ? '펼치기' : '접기'; b.setAttribute('aria-expanded', String(!on));
+}
 function openAd(){
   if (!sess.get(TOKEN_KEY)) return;
+  adFold(false);
   document.getElementById('adDlg').show();
 }
 (function initAd(){
