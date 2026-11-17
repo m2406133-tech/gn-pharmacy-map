@@ -1551,7 +1551,8 @@ function initMap(){
   // 중소병원과 로컬 점은 캔버스라서 지도 클릭 위치로 어느 점인지 찾는다
   naver.maps.Event.addListener(map, 'click', e => {
     const p = state.dots && state.dots.hit(e.coord);
-    if (!p) return state.iw.close();
+    // 점이 없는 곳을 누르면 고른 곳을 해제하고 목록으로 돌아간다('목록으로'와 같지만 지도는 옮기지 않는다)
+    if (!p) { if (state.sel || state.lsel || state.psel) { clearSel(); renderList(); } else state.iw.close(); return; }
     if (p.kind === 'l') tapPh('l:' + p.id); else selectPlace(p.kind, p.id);
   });
   // 캔버스 점은 title을 달 수 없으므로, 마우스가 점 위에 오면 이름을 작은 말풍선으로 띄운다(HTML 마커는 title이 있다)
