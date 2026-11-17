@@ -181,6 +181,7 @@ a{color:var(--hosp)}
 .wp i{position:absolute;transform:translate(-50%,-50%);font:normal 16px/1 "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
 /* 로컬: 캔버스 점, 고른 의원과 그 주변 로컬 약국만 HTML 마커 */
 .has-sel .loc-layer{opacity:.35}
+.dot-tip{position:fixed;z-index:1000;pointer-events:none;padding:3px 7px;border:1px solid var(--line);border-radius:4px;background:#fff;color:#1B2420;font-size:12px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .hide-hosp .hm,.hide-hosp .pm.hz{display:none!important}
 .cm .hm-dot{background:var(--loc);width:16px;height:16px;margin:4px;box-shadow:0 0 0 1px var(--loc),0 1px 4px rgba(0,0,0,.3)}
 .hm.cm.sel .hm-label{background:var(--loc);border-color:var(--loc)}
@@ -1553,6 +1554,21 @@ function initMap(){
     if (!p) return state.iw.close();
     if (p.kind === 'l') tapPh('l:' + p.id); else selectPlace(p.kind, p.id);
   });
+  // 캔버스 점은 title을 달 수 없으므로, 마우스가 점 위에 오면 이름을 작은 말풍선으로 띄운다(HTML 마커는 title이 있다)
+  const tip = document.createElement('div'); tip.className = 'dot-tip'; tip.hidden = true; document.body.appendChild(tip);
+  naver.maps.Event.addListener(map, 'mousemove', e => {
+    const p = state.dots && state.dots.hit(e.coord);
+    mapEl.style.cursor = p ? 'pointer' : '';
+    if (!p) { tip.hidden = true; return; }
+    const x = (p.kind === 'l' ? LOC.P : p.kind === 'm' ? LOC.M : LOC.C)[p.id];
+    tip.textContent = p.kind === 'l' ? phTitle('l:' + p.id, x) : x.n;
+    const r = mapEl.getBoundingClientRect(), x0 = r.left + e.offset.x, y0 = r.top + e.offset.y;
+    tip.hidden = false;
+    // 화면 오른쪽 끝에서는 글이 잘리지 않게 커서 왼쪽에 띄운다
+    const left = x0 + 12 + tip.offsetWidth > innerWidth ? x0 - 12 - tip.offsetWidth : x0 + 12;
+    Object.assign(tip.style, { left: left + 'px', top: y0 + 14 + 'px' });
+  });
+  naver.maps.Event.addListener(map, 'mouseout', () => { tip.hidden = true; mapEl.style.cursor = ''; });
   naver.maps.Event.addListener(map, 'idle', () => { if (!document.getElementById('list').hidden && !state.lq.trim()) renderPlaceRows(); });
   markMemos(); zoomClass(map.getZoom()); addDots();
   // 지도가 늦게 열렸다면 그 사이에 고른 곳을 지도에 다시 그린다. 고른 곳이 없을 때만 지역에 맞춘다
