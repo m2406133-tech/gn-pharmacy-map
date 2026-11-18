@@ -2,14 +2,14 @@
 
 local.json은 m·c·p 목록의 행마다 키 이름을 되풀이하지 않도록, 목록별 columns에 키 순서를 한 번만 적고 행은 값만 배열로 둔다.
 행에 없는 키는 null로 채우며(원본 값에는 null이 없다), 브라우저와 build_local·fetch_poi가 읽을 때 다시 객체로 되돌린다.
-version.json은 local.json·poi.json 내용의 해시를 담아, 페이지가 'local.json?v=해시'처럼 받아 브라우저 캐시를 안전하게 오래 쓰게 한다.
+version.json은 local.json·poi.json·bldg.json 내용의 해시를 담아, 페이지가 'local.json?v=해시'처럼 받아 브라우저 캐시를 안전하게 오래 쓰게 한다.
 """
 import hashlib, json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LISTS = ('m', 'c', 'p')
-VERSIONED = ('local', 'poi')
+VERSIONED = ('local', 'poi', 'bldg')
 
 
 def pack(data):
@@ -47,7 +47,7 @@ def write_local(data, path=None):
 
 
 def write_version():
-    """local.json·poi.json의 내용 해시를 version.json에 적는다. 없는 파일은 건너뛴다."""
+    """local.json·poi.json·bldg.json의 내용 해시를 version.json에 적는다. 없는 파일은 건너뛴다."""
     ver = {}
     for name in VERSIONED:
         f = ROOT / f'{name}.json'

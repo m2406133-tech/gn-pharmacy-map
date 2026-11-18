@@ -148,6 +148,7 @@ a{color:var(--hosp)}
 .lg-p,.lg-mp,.lg-lp{width:20px;height:8.5px;border-radius:4.3px;border:.7px solid rgba(30,25,25,.6);background:linear-gradient(90deg,var(--c) 50%,#F6B80A 50%);transform:rotate(-50deg);margin:0 1px}
 .lg-p{--c:#24479A}.lg-mp{--c:#A8432A}.lg-lp{--c:#17753F}
 .lg-r{width:14px;height:14px;border-radius:50%;border:1.5px dashed var(--hosp)}
+.lg-b{width:18px;height:12px;border-radius:3px;border:1.5px dashed var(--loc);background:rgba(23,117,63,.1)}
 .lg-n{font-style:normal;font-size:10.5px;font-weight:700;line-height:1;color:#fff;background:var(--ink);padding:2px 4px;border-radius:3px}
 
 /* markers (HTML icons) */
@@ -354,6 +355,7 @@ a{color:var(--hosp)}
       <span><i class="lg-mp"></i>약국 (의사 <span data-midmin>10</span>명 이상 병원 반경 안)</span>
       <b>로컬</b>
       <span><i class="lg-c"></i>의원</span>
+      <span><i class="lg-b"></i>메디컬 빌딩 (의원 <span data-medmin>3</span>곳 이상, 확대하면 보임)</span>
       <span><i class="lg-lp"></i>약국 (병원 반경 밖, 작은 병원 포함)</span>
       <span id="lgWh" hidden><i class="lg-w">💩</i>창고형약국 (💩 1개 = 약사 1명)</span></div>
   </div></details>
@@ -361,6 +363,7 @@ a{color:var(--hosp)}
 
 <script src="admatch.js"></script>
 <script src="adai.js"></script>
+<script src="bldg.js"></script>
 <script>
 /* ===== 설정: 네이버 클라우드에서 발급받은 Client ID를 넣으세요 ===== */
 const NCP_KEY_ID = 'ojaq60eret';
@@ -466,7 +469,7 @@ function hoursText(key){
 
 /* 중소병원(m)과 로컬 의원(c)·약국(p)은 local.json(tools/build_local.py로 만든다)에 있다. 수천 곳이라 HTML 마커 대신
    캔버스 한 장에 점으로 그리고, 고른 병원·의원과 그 주변 로컬 약국만 HTML 마커로 띄운다 */
-const LOC = { basis:'', err:false, m:[], c:[], p:[], M:{}, C:{}, P:{} };
+const LOC = { basis:'', err:false, m:[], c:[], p:[], B:[], M:{}, C:{}, P:{} };
 const place = (kind, id) => (kind === 'm' ? LOC.M : LOC.C)[id];
 const placeR = (kind, x) => kind === 'm' ? x.zr : ZONE;   // 중소병원은 병원 반경(zoneR), 로컬 의원은 ZONE
 const gap = (a, b) => { const k = Math.PI / 180;
@@ -1392,7 +1395,11 @@ store.set(TOKEN_KEY, null);   // 예전 방식으로 이 브라우저에 오래 
 if (sess.get(TOKEN_KEY)) loadMemo(sess.get(TOKEN_KEY)).then(m => {
   if (m && !state.edit) { state.memoPub = state.memo = m; refreshRank(); }
 }).catch(e => { if (e.message === '401') sess.set(TOKEN_KEY, null); });
-Promise.all([VER_READY.then(ver => getData('local', ver)).then(r => r.ok ? r.json() : Promise.reject()).then(unpackLocal), POI_READY]).then(([L, poi]) => {
+// 메디컬 빌딩 이름(bldg.json, tools/build_bldg.py). 없으면 주소로 보여 준다
+const MED_MIN = 3;   // 같은 도로명주소에 로컬 의원이 이만큼 있으면 메디컬 빌딩으로 지도에 묶어 그린다
+document.querySelectorAll('[data-medmin]').forEach(e => { e.textContent = MED_MIN; });
+const BLDG_READY = VER_READY.then(ver => getData('bldg', ver)).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+Promise.all([VER_READY.then(ver => getData('local', ver)).then(r => r.ok ? r.json() : Promise.reject()).then(unpackLocal), POI_READY, BLDG_READY]).then(([L, poi, bn]) => {
   const byId = xs => Object.fromEntries(xs.map(x => [x.id, x]));
   [['m', 'm'], ['c', 'c'], ['p', 'l']].forEach(([k, pre]) => L[k].forEach(x => { const v = poi[pre + ':' + x.id]; if (v) { x.x = v[0]; x.y = v[1]; } }));
   L.m.concat(L.c, L.p).forEach(x => { x.m = merc(x.x, x.y); });
@@ -1403,6 +1410,7 @@ Promise.all([VER_READY.then(ver => getData('local', ver)).then(r => r.ok ? r.jso
   assignKind(L.p, L.m);
   assignKind(P.filter(p => p.pk !== 'h'), L.m);   // 병원권 병원에서 멀거나 의원에 딸린 약국도 중소병원 반경 안이면 중소병원 약국이다
   P.forEach(paintPm);
+  LOC.B = Bldg.medicalBuildings(L.c, bn, MED_MIN);
   renderSummary(); renderRows(); addDots(); markWarehouses();
 }).catch(() => { LOC.err = true; renderSummary(); renderRows(); });
 
@@ -1431,6 +1439,19 @@ function addDots(){
       if (this.cv.width !== W * dpr || this.cv.height !== Hh * dpr) { this.cv.width = W * dpr; this.cv.height = Hh * dpr; }
       const g = this.cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, Hh);
       const zoom = map.getZoom(), r = (zoom >= 15 ? 6.5 : zoom >= 13 ? 4.8 : zoom >= 11 ? 2.8 : 1.8) * pillZoom(zoom);   // 확대할수록 의원·중소병원·약국 점의 기본 반지름(확대 17 이후에는 pillZoom만큼 더 커진다)
+      // 메디컬 빌딩: 확대 13부터 같은 건물 의원 점들을 점선 테두리로 감싸고, 15부터 이름표를 단다. 점보다 먼저 그려 점 아래에 깔린다
+      const tags = [];
+      if (state.groups.loc && zoom >= 13) {
+        g.save(); g.setLineDash([4, 3]); g.lineWidth = 1.5; g.strokeStyle = PILL_C.l; g.fillStyle = 'rgba(23,117,63,.1)';
+        LOC.B.forEach(b => {
+          const xs = b.c.map(c => this.px(c.m)), ys = b.c.map(c => this.py(c.m)), pad = r + 6;
+          const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, x1 = Math.max(...xs) + pad, y1 = Math.max(...ys) + pad;
+          if (x1 < 0 || y1 < 0 || x0 > W || y0 > Hh) return;
+          g.beginPath(); g.roundRect(x0, y0, x1 - x0, y1 - y0, 6); g.fill(); g.stroke();
+          if (zoom >= 15) tags.push([x0, y0, `${b.name || '메디컬 빌딩'} · 의원 ${b.c.length}`]);
+        });
+        g.restore();
+      }
       const lp = { m: new Path2D(), l: new Path2D() }, cl = new Path2D(), md = new Path2D(), mx = new Path2D(), memo = new Path2D(), M = state.memo;
       this.pts = [];
       const put = (x, kind, rad, path) => {
@@ -1484,6 +1505,12 @@ function addDots(){
         g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowOffsetY = 1; g.shadowBlur = 1;
         const ink = poopInk();
         poops.forEach(([x, y, L, zs]) => { g.font = `${POOP_PX * zs}px ${POOP_FONT}`; L.pts.forEach(([dx, dy]) => g.fillText('💩', x + (dx - ink.ox) * zs, y + (dy - ink.oy) * zs)); });
+        g.restore();
+      }
+      if (tags.length) {   // 이름표는 캡슐에 가리지 않도록 맨 위에 흰 테두리 글자로 그린다
+        g.save(); g.font = `600 12px ${getComputedStyle(document.body).fontFamily}`; g.textBaseline = 'bottom';
+        g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = '#fff'; g.fillStyle = PILL_C.l;
+        tags.forEach(([x, y, t]) => { g.strokeText(t, x, y - 2); g.fillText(t, x, y - 2); });
         g.restore();
       }
     }
