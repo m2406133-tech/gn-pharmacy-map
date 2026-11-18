@@ -40,6 +40,7 @@ a{color:var(--hosp)}
 .regions{display:flex;flex-wrap:wrap;gap:6px}
 .regions button{padding:4px 11px;border:1px solid var(--line);border-radius:999px;font-size:13px;background:#fff}
 .regions button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.regions button.gu{border-style:dashed;font-size:12.5px}
 .toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer}
 .toggle input{accent-color:var(--hosp);width:16px;height:16px;margin:0}
 .groups{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -359,6 +360,7 @@ a{color:var(--hosp)}
     <div><b>병원권</b>
       <span><i class="lg-h"></i>병원 (전문의 15명 이상)</span>
       <span><i class="lg-p"></i>약국 (캡슐 1개 = 약사 1명)</span>
+      <span><svg width="20" height="18" viewBox="-8 -8 16 15" aria-hidden="true"><path d="M-7 -1H7C7 4 3.5 6 0 6C-3.5 6 -7 4 -7 -1Z" fill="#F4EBD8" stroke="#5A3A1E" stroke-width=".8"/><ellipse cx="0" cy="-1" rx="6.2" ry="1.4" fill="#7A4A1E"/><path d="M-2.2 -3C-3.2 -4.4 -1.2 -5 -2.2 -6.6M2.2 -3C1.2 -4.4 3.2 -5 2.2 -6.6" stroke="#7A4A1E" stroke-width=".9" fill="none" stroke-linecap="round"/></svg>탕약 사발 1개 = 한약사 1명 (모든 약국 공통)</span>
       <span><i class="lg-r"></i>병원 반경 (건물 가장자리에서 <span data-zone>100</span>m쯤)</span>
       <span><i class="lg-n">1번</i>접근성 순번</span></div>
     <div><b>중소병원</b>
@@ -423,6 +425,9 @@ function applyZones(){
   });
 }
 const REGIONS = ['전체','창원','진주','김해','양산','거제','사천','통영'];
+// 창원은 구로 한 번 더 나눈다. 구 칸은 창원이나 그 구를 골랐을 때만 창원 칸 뒤에 보이고, sgg('창원성산구')로 거른다
+const CW_GU = ['의창구', '성산구', '마산합포구', '마산회원구', '진해구'];
+const inRegion = (x, r = state.region) => r === '전체' || (CW_GU.includes(r) ? x.sgg === '창원' + r : x.r === r);
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
   groups:{ hosp:true, mid:true, loc:true }, lsel:null, psel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null, scan:null };
 /* 병원별 약국 순번은 rank.json({ 병원 no: [1번 약국 id, 2번, 3번] })에 있고, 중소병원은 'm:중소병원 id' 키에
@@ -508,16 +513,17 @@ function renderSummary(){
 }
 function renderRegions(){
   const el = document.getElementById('regions');
-  el.innerHTML = REGIONS.map(r => {
-    const n = r === '전체' ? H.length : H.filter(h => h.r === r).length;
-    return `<button type="button" data-r="${r}" aria-pressed="${r === state.region}">${r} ${n}</button>`;
+  const cw = state.region === '창원' || CW_GU.includes(state.region);
+  el.innerHTML = REGIONS.flatMap(r => r === '창원' && cw ? [r, ...CW_GU] : [r]).map(r => {
+    const n = H.filter(h => inRegion(h, r)).length;
+    return `<button type="button" data-r="${r}"${CW_GU.includes(r) ? ' class="gu"' : ''} aria-pressed="${r === state.region}">${r} ${n}</button>`;
   }).join('');
   el.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
     state.region = b.dataset.r; state.more = { ...STEP }; renderRegions(); clearSel(); renderList(); fitRegion();
   };
 }
-function visibleH(){ return H.filter(h => state.region === '전체' || h.r === state.region).sort((a, b) => b.tot - a.tot || b.sp - a.sp); }
+function visibleH(){ return H.filter(h => inRegion(h)).sort((a, b) => b.tot - a.tot || b.sp - a.sp); }
 const STEP = { m: 20, c: 50, p: 50 };   // 중소병원과 로컬 의원, 찾은 약국을 한 번에 더 보여 주는 개수
 function renderList(){
   const list = document.getElementById('list');
@@ -571,7 +577,7 @@ function renderHospRows(){
 // 중소병원과 로컬 의원은 검색어가 없으면 지금 지도에 보이는 곳만, 의사 수가 많은 순으로 보여 준다
 function visiblePlaces(kind){
   const q = state.lq.trim();
-  let xs = LOC[kind].filter(x => state.region === '전체' || x.r === state.region);
+  let xs = LOC[kind].filter(x => inRegion(x));
   if (q) xs = xs.filter(x => x.n.includes(q));
   else if (state.map) {
     const b = state.map.getBounds(), sw = b.getSW(), ne = b.getNE();
@@ -613,10 +619,10 @@ const linkName = z => z.kind === 'h' ? z.x.s : z.x.n;
    띄어 쓴 낱말이 모두 이름이나 영업시간에 있어야 한다. '17:30 12:30'이면 17시 30분과 12시 30분에 닫는 요일이 있는 약국이다 */
 function renderPhRows(){
   const el = document.getElementById('pRows'); if (!el) return;
-  const q = state.lq.trim(), ws = q.split(/\s+/), inR = r => state.region === '전체' || r === state.region;
+  const q = state.lq.trim(), ws = q.split(/\s+/), inR = inRegion;
   const hit = ({ p, key }) => { const s = p.n + ' ' + hoursText(key); return ws.every(w => s.includes(w)); };
-  const xs = !q ? [] : P.filter(p => phOn(p) && inR(HN[p.h[0][0]].r)).map(p => ({ p, key: 'p:' + p.id })).filter(hit)
-    .concat(LOC.p.filter(p => phOn(p) && inR(p.r)).map(p => ({ p, key: 'l:' + p.id })).filter(hit));
+  const xs = !q ? [] : P.filter(p => phOn(p) && inR(HN[p.h[0][0]])).map(p => ({ p, key: 'p:' + p.id })).filter(hit)
+    .concat(LOC.p.filter(p => phOn(p) && inR(p)).map(p => ({ p, key: 'l:' + p.id })).filter(hit));
   const byTime = /\d/.test(q);
   showGrp(el, xs.length);
   const n = state.more.p;
@@ -883,6 +889,18 @@ function gridLayout(kind, ps, dx, dy, padX, padY){
     hw: (Math.max(...xs) - Math.min(...xs)) / 2 + padX, hh: (Math.max(...ys) - Math.min(...ys)) / 2 + padY };
 }
 const pillLayout = ps => gridLayout('pill', ps, 8.2 * PILL_S, 17 * PILL_S, 9 * PILL_S, 10 * PILL_S);
+// 한약사는 캡슐 대신 탕약 사발 1개 = 1명으로, 약사 캡슐 뒤에 이어 놓는다(같은 배치, 회전·뒤집기 없음). 좌표는 캡슐과 같은 단위다
+const BOWL = { cup: 'M-7 -1H7C7 4 3.5 6 0 6C-3.5 6 -7 4 -7 -1Z', steam: 'M-2.2 -3C-3.2 -4.4 -1.2 -5 -2.2 -6.6M2.2 -3C1.2 -4.4 3.2 -5 2.2 -6.6',
+  fill: '#F4EBD8', line: '#5A3A1E', tea: '#7A4A1E' };
+const bowlSvg = `<path d="${BOWL.cup}" fill="#fff" stroke="#fff" stroke-width="2.4"/><path d="${BOWL.cup}" fill="${BOWL.fill}" stroke="${BOWL.line}" stroke-width=".8"/><ellipse cx="0" cy="-1" rx="6.2" ry="1.4" fill="${BOWL.tea}"/><path d="${BOWL.steam}" stroke="${BOWL.tea}" stroke-width=".9" fill="none" stroke-linecap="round"/>`;
+let bowlPaths;
+function drawBowl(g){
+  bowlPaths ||= { cup: new Path2D(BOWL.cup), steam: new Path2D(BOWL.steam) };
+  g.lineWidth = 2.4; g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.stroke(bowlPaths.cup); g.fill(bowlPaths.cup);
+  g.fillStyle = BOWL.fill; g.fill(bowlPaths.cup); g.lineWidth = .8; g.strokeStyle = BOWL.line; g.stroke(bowlPaths.cup);
+  g.beginPath(); g.ellipse(0, -1, 6.2, 1.4, 0, 0, 7); g.fillStyle = BOWL.tea; g.fill();
+  g.lineWidth = .9; g.lineCap = 'round'; g.strokeStyle = BOWL.tea; g.stroke(bowlPaths.steam);
+}
 // 창고형약국은 캡슐 대신 약사 수만큼 💩를 놓는다. 이모지는 글꼴마다 그림이 차지하는 크기가 달라서(글자 상자보다 작다),
 // 캔버스에 한 번 그려 실제로 색이 칠해진 영역(폭 w, 높이 h, 글자 상자 가운데에서 벗어난 정도 ox·oy)을 재고
 // 그림끼리 1px 틈만 두고 맞닿게 놓는다
@@ -906,7 +924,7 @@ const poopLayout = ps => { const k = poopInk(); return gridLayout('poop', ps, k.
 const poopHtml = ps => { const L = poopLayout(ps), k = poopInk();
   return `<span class="wp" style="width:${L.hw * 2}px;height:${L.hh * 2}px" aria-hidden="true">${L.pts.map(([x, y]) => `<i style="left:${L.hw + x - k.ox}px;top:${L.hh + y - k.oy}px">💩</i>`).join('')}</span>`; };
 // 약국 마커 그림: 창고형약국이면 💩, 아니면 캡슐. key는 'p:약국 id' 또는 'l:로컬 약국 id'다
-const pharmIcon = (key, p) => isWh(key) ? poopHtml(p.ps) : pillSvg(p.ps, p.tilt, p.pk);
+const pharmIcon = (key, p) => isWh(key) ? poopHtml(p.ps) : pillSvg(p.ps, p.tilt, p.pk, p.hs);
 const phTitle = (key, p) => `${p.n} (약사 ${p.ps}명${p.hs ? `, 한약사 ${p.hs}명` : ''}${isWh(key) ? ', 창고형약국' : ''})`;
 // 가까이 붙은 약국은 기울기를 서로 반대로 해 구분한다. tilt는 -1(기본)과 1(좌우를 뒤집은 기울기)이다.
 // 40m 안에 이미 정한 약국이 있으면 그 이웃들과 반대쪽을 고르고, 없으면 기본이다. fixed는 이미 정해 둔 약국들이다
@@ -956,9 +974,9 @@ const POI_READY = VER_READY.then(ver => getData('poi', ver)).then(r => r.ok ? r.
   if (!document.getElementById('list').hidden) { renderSummary(); renderRows(); }
   return poi;
 });
-function pillSvg(ps, tilt, pk){
-  const L = pillLayout(ps), W = L.hw * 2, H = L.hh * 2, c = PILL_C[pk || 'l'], k = PILL_D[pk || 'l'];
-  const g = L.pts.map(([x, y]) => `<g transform="translate(${L.hw + x} ${L.hh + y}) scale(${PILL_S})${tilt > 0 ? ' scale(-1 1)' : ''} rotate(${PILL_ROT})"><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="#fff" stroke="#fff" stroke-width="2.4"/><path d="M0 -3.2H-4.3A3.2 3.2 0 0 0 -4.3 3.2H0Z" fill="${c}"/><path d="M0 -3.2H4.3A3.2 3.2 0 0 1 4.3 3.2H0Z" fill="${PILL_Y}"/><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="none" stroke="${k}" stroke-width=".7"/></g>`).join('');
+function pillSvg(ps, tilt, pk, hs){
+  const L = pillLayout((ps || 0) + (hs || 0)), W = L.hw * 2, H = L.hh * 2, c = PILL_C[pk || 'l'], k = PILL_D[pk || 'l'];
+  const g = L.pts.map(([x, y], i) => hs && i >= (ps || 0) ? `<g transform="translate(${L.hw + x} ${L.hh + y}) scale(${PILL_S})">${bowlSvg}</g>` : `<g transform="translate(${L.hw + x} ${L.hh + y}) scale(${PILL_S})${tilt > 0 ? ' scale(-1 1)' : ''} rotate(${PILL_ROT})"><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="#fff" stroke="#fff" stroke-width="2.4"/><path d="M0 -3.2H-4.3A3.2 3.2 0 0 0 -4.3 3.2H0Z" fill="${c}"/><path d="M0 -3.2H4.3A3.2 3.2 0 0 1 4.3 3.2H0Z" fill="${PILL_Y}"/><rect x="-7.5" y="-3.2" width="15" height="6.4" rx="3.2" fill="none" stroke="${k}" stroke-width=".7"/></g>`).join('');
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${g}</svg>`;
 }
 // 병원권 약국(DATA.ph)의 마커를 종류(pk)에 맞게 다시 그린다. 병원권(hz)만 병원권 묶음을 끄면 숨고, ZONE 밖 약국은 자기 묶음(중소병원·로컬)을 따른다.
@@ -1553,8 +1571,8 @@ function addDots(){
           if (M && M.l[p.id]) { memo.moveTo(px + half + 3, py - L.hh * zs); memo.arc(px + half, py - L.hh * zs, 3, 0, 7); }
           return;
         }
-        const L = pillLayout(p.ps), half = L.hw * zs;
-        pills.push([px, py, L, p.tilt, p.pk || 'l', zs]); this.pts.push({ px, py, rad: half, kind: 'l', id: p.id, pl: { L, t: p.tilt, zs } });
+        const L = pillLayout((p.ps || 0) + (p.hs || 0)), half = L.hw * zs;
+        pills.push([px, py, L, p.tilt, p.pk || 'l', zs, p.hs ? p.ps || 0 : 8]); this.pts.push({ px, py, rad: half, kind: 'l', id: p.id, pl: { L, t: p.tilt, zs } });
         if (M && M.l[p.id]) { memo.moveTo(px + half + 3, py - L.hh * zs); memo.arc(px + half, py - L.hh * zs, 3, 0, 7); }
       });
       if (state.groups.loc) LOC.c.forEach(c => put(c, 'c', r, cl));
@@ -1565,8 +1583,10 @@ function addDots(){
       g.fillStyle = '#A8432A'; g.fill(md); if (zoom >= 11) g.stroke(md);
       if (zoom >= 13) { g.save(); g.strokeStyle = '#fff'; g.lineWidth = zoom >= 15 ? 2 : 1.5; g.stroke(mx); g.restore(); }
       g.fillStyle = '#C98A00'; g.fill(memo);
-      pills.forEach(([x, y, L, t, pk, zs]) => L.pts.forEach(([dx, dy]) => {
-        g.save(); g.translate(x + dx * zs, y + dy * zs); g.scale(PILL_S * zs, PILL_S * zs); if (t > 0) g.scale(-1, 1); g.rotate(PILL_ROT * Math.PI / 180);
+      pills.forEach(([x, y, L, t, pk, zs, np]) => L.pts.forEach(([dx, dy], i) => {
+        g.save(); g.translate(x + dx * zs, y + dy * zs); g.scale(PILL_S * zs, PILL_S * zs);
+        if (i >= np) { drawBowl(g); g.restore(); return; }
+        if (t > 0) g.scale(-1, 1); g.rotate(PILL_ROT * Math.PI / 180);
         g.beginPath(); g.roundRect(-7.5, -3.2, 15, 6.4, 3.2); g.lineWidth = 2.4; g.strokeStyle = '#fff'; g.stroke(); g.fillStyle = '#fff'; g.fill();
         g.beginPath(); g.roundRect(-7.5, -3.2, 7.5, 6.4, [3.2, 0, 0, 3.2]); g.fillStyle = PILL_C[pk]; g.fill();
         g.beginPath(); g.roundRect(0, -3.2, 7.5, 6.4, [0, 3.2, 3.2, 0]); g.fillStyle = PILL_Y; g.fill();
@@ -1616,7 +1636,7 @@ function addDots(){
 }
 function fitRegion(){
   if (!state.map) return;
-  const hs = visibleH(); if (!hs.length) return;
+  const hs = visibleH().length ? visibleH() : LOC.c.filter(x => inRegion(x)); if (!hs.length) return;
   const pad = 0.006;
   const lats = hs.map(h => h.y), lngs = hs.map(h => h.x);
   state.map.fitBounds(naver.maps.LatLngBounds.bounds(
@@ -1702,21 +1722,22 @@ const setGroup = (g, on) => {
   markWarehouses();
 };
 document.getElementById('optRings').onchange = () => Object.values(state.rings).forEach(c => c.setVisible(ringsOn()));
-/* 조작부 접기: 지역·묶음·표시는 처음 한 번 고르면 잘 바꾸지 않으므로, 조작부에서 무언가를 누른 뒤 그 밖으로 나가면
-   접어서 목록·상세 자리를 넓힌다. 접힌 맨 위 줄에 마우스를 올리면 펼치고, 터치 화면은 그 줄을 누르면 펼친다.
+/* 조작부 접기: 지역·묶음·표시는 처음 한 번 고르면 잘 바꾸지 않으므로, 조작부 밖(목록·지도)을 누르거나 조작부에서 무언가를 누른 뒤
+   그 밖으로 나가면 접어서 목록·상세 자리를 넓힌다. 접힌 맨 위 줄에 마우스를 올리면 펼치고, 터치 화면은 그 줄을 누르면 펼친다.
    편집 중이거나 매물 찾기 창이 열려 있으면 접지 않는다(편집 저장 단추와 창이 조작부 안에 있다) */
 (function initFold(){
   const panel = document.getElementById('panel'), ctl = panel.querySelector('.controls'), tab = document.getElementById('ctlTab');
   let used = false;
   const peek = on => { panel.classList.toggle('peek', on); tab.setAttribute('aria-expanded', on); };
-  const fold = () => {
-    if (!used || state.edit || document.getElementById('adDlg').open || document.getElementById('pwDlg').open) return;
+  const fold = force => {
+    if (!(used || force === true) || state.edit || document.getElementById('adDlg').open || document.getElementById('pwDlg').open) return;
     tab.firstChild.textContent = `${state.region} · 지역·표시 설정`;
     panel.classList.add('fold'); peek(false);
   };
   ctl.addEventListener('click', e => { if (e.target !== tab && e.target.closest('button, input')) used = true; });
   ctl.addEventListener('mouseleave', fold);
-  document.addEventListener('pointerdown', e => { if (!ctl.contains(e.target)) fold(); });
+  // 조작부 밖(목록·상세·지도)을 누르면 조작부를 건드린 적이 없어도 접는다
+  document.addEventListener('pointerdown', e => { if (!ctl.contains(e.target) && !e.target.closest('dialog')) fold(true); });
   ctl.addEventListener('mouseenter', () => { if (panel.classList.contains('fold')) peek(true); });
   tab.onclick = () => peek(true);
 })();
