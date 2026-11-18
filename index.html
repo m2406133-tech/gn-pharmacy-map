@@ -27,6 +27,11 @@ a{color:var(--hosp)}
 /* ---------- panel ---------- */
 #panel{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--paper)}
 .controls{padding:16px 20px 12px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+/* 조작부 접기(initFold): 접히면 맨 위 한 줄(.ctl-tab)만 남고, 그 줄에 마우스를 올리거나 누르면(.peek) 다시 펼친다 */
+.ctl-tab{display:none;width:100%;padding:2px 0;border:0;background:none;color:var(--muted);font-size:12.5px;text-align:left;cursor:pointer}
+#panel.fold .ctl-tab{display:block;flex-basis:100%}
+#panel.fold:not(.peek) .controls{padding-top:8px;padding-bottom:8px}
+#panel.fold:not(.peek) .controls > :not(.ctl-tab):not(dialog){display:none}
 /* 자료 기준 설명은 목록 맨 아래에 접어 둔다. 상세 화면에서는 목록과 함께 숨긴다 */
 .about{margin:8px 20px 20px;font-size:12.5px;color:var(--muted)}
 .about summary{cursor:pointer;padding:6px 0}
@@ -213,6 +218,10 @@ a{color:var(--hosp)}
 .h-sub{display:block;color:var(--muted);font-size:12px}
 .h-ph small+small{margin-top:1px}
 .facts-note{font-size:12px;color:var(--muted);margin:-6px 0 12px}
+.scan-list{margin:6px 0 0;padding:0;list-style:none}
+.scan-list li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.scan-list li span:last-child{color:var(--muted);white-space:nowrap}
+.scan-list button{text-align:left;font-weight:600}
 .iw{padding:10px 12px;font-family:"IBM Plex Sans KR",system-ui,sans-serif;font-size:12.5px;line-height:1.5;color:var(--ink);min-width:200px;max-width:260px}
 .iw strong{display:block;font-size:14px}
 .iw .d{color:var(--rx);font-weight:600}
@@ -290,6 +299,7 @@ a{color:var(--hosp)}
 <body>
 <aside id="panel" aria-label="병원과 약국 목록">
   <div class="controls">
+    <button type="button" class="ctl-tab" id="ctlTab" aria-expanded="false"><span></span> <span aria-hidden="true">▾</span></button>
     <div class="regions" id="regions" role="group" aria-label="지역 선택"></div>
     <div class="groups" role="group" aria-label="묶음 선택">
       <label class="grp-opt"><input type="checkbox" id="optHosp" checked><span><b>병원권</b><small id="hospCount"></small></span></label>
@@ -298,6 +308,7 @@ a{color:var(--hosp)}
     </div>
     <label class="toggle"><input type="checkbox" id="optRings" checked> 병원권 반경 표시</label>
     <label class="toggle"><input type="checkbox" id="optPh" checked> 약국 표시</label>
+    <label class="toggle"><input type="checkbox" id="optScan"> 반경 분석 (켜고 지도를 누르면 그 지점 주변을 셉니다)</label>
     <div id="editBar"></div>
     <dialog id="adDlg" class="ad-dlg" aria-labelledby="adTitle">
       <form id="adForm">
@@ -364,6 +375,7 @@ a{color:var(--hosp)}
 <script src="admatch.js"></script>
 <script src="adai.js"></script>
 <script src="bldg.js"></script>
+<script src="scan.js"></script>
 <script>
 /* ===== 설정: 네이버 클라우드에서 발급받은 Client ID를 넣으세요 ===== */
 const NCP_KEY_ID = 'ojaq60eret';
@@ -412,7 +424,7 @@ function applyZones(){
 }
 const REGIONS = ['전체','창원','진주','김해','양산','거제','사천','통영'];
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
-  groups:{ hosp:true, mid:true, loc:true }, lsel:null, psel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null };
+  groups:{ hosp:true, mid:true, loc:true }, lsel:null, psel:null, lmk:[], lq:'', more:{ m:20, c:50, p:50 }, dots:null, scan:null };
 /* 병원별 약국 순번은 rank.json({ 병원 no: [1번 약국 id, 2번, 3번] })에 있고, 중소병원은 'm:중소병원 id' 키에
    ['p:약국 id' 또는 'l:로컬 약국 id', …]로 함께 둔다(중소병원 반경 안에는 두 종류 약국이 섞여 있어서).
    창고형약국 자동 판정을 직접 바꾼 곳은 wh.json({ 'p:약국 id' 또는 'l:로컬 약국 id': 1 또는 0 })에 있다
@@ -761,6 +773,60 @@ function renderPlace(kind, id){
   };
 }
 
+/* 반경 분석: '반경 분석'을 켜고 지도를 누르면 그 지점 반경 안의 아파트 세대수(apt.json, 국토교통부 K-apt)와
+   병원권 병원·중소병원·의원의 의사 수, 약국의 약사 수를 센다(scan.js). 묶음 표시를 꺼도 모두 센다 */
+const APT = { basis: '', a: [] };
+const SCAN_R = [100, 300, 500];
+function scanSets(){
+  return {
+    apts: APT.a,
+    docs: H.map(h => ({ x: h.x, y: h.y, d: h.tot, n: h.s, key: 'h:' + h.no }))
+      .concat(LOC.m.map(m => ({ x: m.x, y: m.y, d: m.d, n: m.n, key: 'm:' + m.id })), LOC.c.map(c => ({ x: c.x, y: c.y, d: c.d, n: c.n, key: 'c:' + c.id }))),
+    pharms: P.map(p => ({ x: p.x, y: p.y, ps: p.ps, n: p.n, key: 'p:' + p.id })).concat(LOC.p.map(p => ({ x: p.x, y: p.y, ps: p.ps, n: p.n, key: 'l:' + p.id }))),
+  };
+}
+function renderScan(){
+  const { pt, R } = state.scan, r = Scan.summarize(pt, R, scanSets());
+  const per = (a, b, f = 1) => b ? (a / b).toLocaleString(undefined, { maximumFractionDigits: f }) : '-';
+  const row = (z, label, sub) => `<li>${z.x.key ? `<button type="button" data-go="${z.x.key}">${esc(label)}</button>` : `<span>${esc(label)}</span>`}<span>${sub} · ${z.d}m</span></li>`;
+  const d = document.getElementById('detail');
+  d.innerHTML = `
+    <button type="button" class="back" id="back">목록으로</button>
+    <h2>반경 ${R}m 분석</h2>
+    <p class="addr">지도에서 고른 지점 주변입니다. 다른 곳을 누르면 그 지점으로 다시 셉니다.</p>
+    <div class="regions" role="group" aria-label="반경 선택">${SCAN_R.map(v => `<button type="button" data-r="${v}" aria-pressed="${v === R}">${v}m</button>`).join('')}</div>
+    <dl class="facts n3 loc">
+      <div class="hl"><dt>아파트 세대</dt><dd>${r.hh.toLocaleString()}</dd></div>
+      <div><dt>의사</dt><dd>${r.d}</dd></div>
+      <div><dt>약사</dt><dd>${r.ps}</dd></div>
+    </dl>
+    <p class="facts-note">약국 1곳당 아파트 ${per(r.hh, r.pharms.length, 0)}세대 · 약사 1명당 의사 ${per(r.d, r.ps)}명</p>
+    <div class="sec-h"><h3>아파트 ${r.apts.length}단지 · ${r.hh.toLocaleString()}세대</h3><span>공동주택관리정보시스템(K-apt) 가입 단지만 셉니다. 작은 빌라와 단독주택은 빠집니다.${APT.basis ? ` ${APT.basis.replace(/-/g, '.')} 기준.` : ' 자료를 아직 불러오지 못했습니다.'}</span></div>
+    <ol class="scan-list">${r.apts.map(z => row(z, z.x.n, `${z.x.hh.toLocaleString()}세대`)).join('') || '<li>반경 안 단지 없음</li>'}</ol>
+    <div class="sec-h"><h3>병원·의원 ${r.docs.length}곳 · 의사 ${r.d}명</h3><span>병원권 병원, 중소병원, 로컬 의원을 모두 셉니다(치과 제외).</span></div>
+    <ol class="scan-list">${r.docs.map(z => row(z, z.x.n, `의사 ${z.x.d}명`)).join('') || '<li>반경 안 병원·의원 없음</li>'}</ol>
+    <div class="sec-h"><h3>약국 ${r.pharms.length}곳 · 약사 ${r.ps}명</h3></div>
+    <ol class="scan-list">${r.pharms.map(z => row(z, z.x.n, `약사 ${z.x.ps}명`)).join('') || '<li>반경 안 약국 없음</li>'}</ol>
+    <p class="note">거리는 지도에 표시된 위치 기준 직선거리입니다. 의사·약사 수는 심평원 신고 인원입니다.</p>`;
+  document.getElementById('list').hidden = true;
+  d.hidden = false;
+  document.getElementById('scroll').scrollTop = document.getElementById('panel').scrollTop = 0;
+  focusDetail(d);
+  document.getElementById('back').onclick = () => { clearSel(); renderList(); focusBack(); };
+  d.querySelector('[aria-label="반경 선택"]').onclick = e => { const b = e.target.closest('[data-r]'); if (b) runScan(pt, +b.dataset.r); };
+  d.querySelectorAll('.scan-list').forEach(ol => { ol.onclick = e => {
+    const b = e.target.closest('[data-go]'); if (!b) return;
+    const [k, id] = [b.dataset.go[0], b.dataset.go.slice(2)];
+    if (k === 'h') select(+id); else if (k === 'm' || k === 'c') selectPlace(k, id); else selectPh(b.dataset.go);
+  }; });
+}
+function runScan(pt, R){
+  clearSel();
+  state.scan = { pt, R };
+  renderScan();
+  if (state.map) addSelRings(pt, [R], R + 80);
+}
+
 /* ---------- selection ---------- */
 // radii[0]은 굵은 실선(기준 거리), 나머지는 점선이다. view(m)를 주면 그 반경이 화면에 들어오게 맞추고, 없으면 첫 고리에 맞춘다
 function addSelRings(x, radii, view){
@@ -952,7 +1018,7 @@ function tapPh(key){
 }
 function clearSel(){
   if (state.iw) state.iw.close();
-  state.lsel = null; state.psel = null;
+  state.lsel = null; state.psel = null; state.scan = null;
   if (!state.map) { state.sel = null; return; }
   if (state.sel) { state.hm[state.sel].el.classList.remove('sel'); state.hm[state.sel].m.setZIndex(100); }
   state.selRings.forEach(c => c.setMap(null)); state.selRings = [];
@@ -1398,6 +1464,12 @@ if (sess.get(TOKEN_KEY)) loadMemo(sess.get(TOKEN_KEY)).then(m => {
 // 메디컬 빌딩 이름(bldg.json, tools/build_bldg.py). 없으면 주소로 보여 준다
 const MED_MIN = 3;   // 같은 도로명주소에 로컬 의원이 이만큼 있으면 메디컬 빌딩으로 지도에 묶어 그린다
 document.querySelectorAll('[data-medmin]').forEach(e => { e.textContent = MED_MIN; });
+// 반경 분석의 아파트 세대수(apt.json, tools/build_apt.py). 없으면 0세대로 센다
+VER_READY.then(ver => getData('apt', ver)).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
+  if (!j) return;
+  APT.basis = j.basis; APT.a = j.a.map(([n, hh, x, y]) => ({ n, hh, x, y }));
+  if (state.scan) renderScan();
+});
 const BLDG_READY = VER_READY.then(ver => getData('bldg', ver)).then(r => r.ok ? r.json() : {}).catch(() => ({}));
 Promise.all([VER_READY.then(ver => getData('local', ver)).then(r => r.ok ? r.json() : Promise.reject()).then(unpackLocal), POI_READY, BLDG_READY]).then(([L, poi, bn]) => {
   const byId = xs => Object.fromEntries(xs.map(x => [x.id, x]));
@@ -1588,6 +1660,7 @@ function initMap(){
   naver.maps.Event.addListener(map, 'zoom_changed', zoomClass);
   // 중소병원과 로컬 점은 캔버스라서 지도 클릭 위치로 어느 점인지 찾는다
   naver.maps.Event.addListener(map, 'click', e => {
+    if (document.getElementById('optScan').checked) return runScan({ x: e.coord.lng(), y: e.coord.lat() }, state.scan ? state.scan.R : 300);
     const p = state.dots && state.dots.hit(e.coord);
     // 점이 없는 곳을 누르면 고른 곳을 해제하고 목록으로 돌아간다('목록으로'와 같지만 지도는 옮기지 않는다)
     if (!p) { if (state.sel || state.lsel || state.psel) { clearSel(); renderList(); } else state.iw.close(); return; }
@@ -1629,6 +1702,26 @@ const setGroup = (g, on) => {
   markWarehouses();
 };
 document.getElementById('optRings').onchange = () => Object.values(state.rings).forEach(c => c.setVisible(ringsOn()));
+/* 조작부 접기: 지역·묶음·표시는 처음 한 번 고르면 잘 바꾸지 않으므로, 조작부에서 무언가를 누른 뒤 그 밖으로 나가면
+   접어서 목록·상세 자리를 넓힌다. 접힌 맨 위 줄에 마우스를 올리면 펼치고, 터치 화면은 그 줄을 누르면 펼친다.
+   편집 중이거나 매물 찾기 창이 열려 있으면 접지 않는다(편집 저장 단추와 창이 조작부 안에 있다) */
+(function initFold(){
+  const panel = document.getElementById('panel'), ctl = panel.querySelector('.controls'), tab = document.getElementById('ctlTab');
+  let used = false;
+  const peek = on => { panel.classList.toggle('peek', on); tab.setAttribute('aria-expanded', on); };
+  const fold = () => {
+    if (!used || state.edit || document.getElementById('adDlg').open || document.getElementById('pwDlg').open) return;
+    tab.firstChild.textContent = `${state.region} · 지역·표시 설정`;
+    panel.classList.add('fold'); peek(false);
+  };
+  ctl.addEventListener('click', e => { if (e.target !== tab && e.target.closest('button, input')) used = true; });
+  ctl.addEventListener('mouseleave', fold);
+  document.addEventListener('pointerdown', e => { if (!ctl.contains(e.target)) fold(); });
+  ctl.addEventListener('mouseenter', () => { if (panel.classList.contains('fold')) peek(true); });
+  tab.onclick = () => peek(true);
+})();
+// 반경 분석을 끄면 지금 보던 분석을 닫고 목록으로 돌아간다. 켜 있는 동안 지도를 누르면 점 대신 그 지점을 분석한다
+document.getElementById('optScan').onchange = e => { if (!e.target.checked && state.scan) { clearSel(); renderList(); } };
 document.getElementById('optPh').onchange = e => { document.getElementById('map').classList.toggle('hide-ph', !e.target.checked); if (state.dots) state.dots.draw(); markWarehouses(); };
 document.getElementById('optHosp').onchange = e => {
   document.getElementById('map').classList.toggle('hide-hosp', !e.target.checked);
