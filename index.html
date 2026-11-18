@@ -425,7 +425,7 @@ function applyZones(){
   });
 }
 const REGIONS = ['전체','창원','진주','김해','양산','거제','사천','통영'];
-// 창원은 구로 한 번 더 나눈다. 구 칸은 창원이나 그 구를 골랐을 때만 창원 칸 뒤에 보이고, sgg('창원성산구')로 거른다
+// 창원은 구로 한 번 더 나눈다. 구 칸은 늘 창원 칸 바로 뒤에 보이고, sgg('창원성산구')로 거른다
 const CW_GU = ['의창구', '성산구', '마산합포구', '마산회원구', '진해구'];
 const inRegion = (x, r = state.region) => r === '전체' || (CW_GU.includes(r) ? x.sgg === '창원' + r : x.r === r);
 const state = { region:'전체', sel:null, map:null, hm:{}, pm:{}, rings:{}, selRings:[], iw:null,
@@ -513,8 +513,7 @@ function renderSummary(){
 }
 function renderRegions(){
   const el = document.getElementById('regions');
-  const cw = state.region === '창원' || CW_GU.includes(state.region);
-  el.innerHTML = REGIONS.flatMap(r => r === '창원' && cw ? [r, ...CW_GU] : [r]).map(r => {
+  el.innerHTML = REGIONS.flatMap(r => r === '창원' ? [r, ...CW_GU] : [r]).map(r => {
     const n = H.filter(h => inRegion(h, r)).length;
     return `<button type="button" data-r="${r}"${CW_GU.includes(r) ? ' class="gu"' : ''} aria-pressed="${r === state.region}">${r} ${n}</button>`;
   }).join('');
