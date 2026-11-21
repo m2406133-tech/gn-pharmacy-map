@@ -513,10 +513,8 @@ function renderSummary(){
 }
 function renderRegions(){
   const el = document.getElementById('regions');
-  el.innerHTML = REGIONS.flatMap(r => r === '창원' ? [r, ...CW_GU] : [r]).map(r => {
-    const n = H.filter(h => inRegion(h, r)).length;
-    return `<button type="button" data-r="${r}"${CW_GU.includes(r) ? ' class="gu"' : ''} aria-pressed="${r === state.region}">${r} ${n}</button>`;
-  }).join('');
+  el.innerHTML = REGIONS.flatMap(r => r === '창원' ? [r, ...CW_GU] : [r]).map(r =>
+    `<button type="button" data-r="${r}"${CW_GU.includes(r) ? ' class="gu"' : ''} aria-pressed="${r === state.region}">${r}</button>`).join('');
   el.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
     state.region = b.dataset.r; state.more = { ...STEP }; renderRegions(); clearSel(); renderList(); fitRegion();
