@@ -778,13 +778,16 @@ function renderPlace(kind, id){
   };
 }
 
-/* 반경 분석: '반경 분석'을 켜고 지도를 누르면 그 지점 반경 안의 아파트 세대수(apt.json, 국토교통부 K-apt)와
-   병원권 병원·중소병원·의원의 의사 수, 약국의 약사 수를 센다(scan.js). 묶음 표시를 꺼도 모두 센다 */
+/* 반경 분석: '반경 분석'을 켜고 지도를 누르면 그 지점 반경 안의 아파트 세대수(apt.json, 국토교통부 K-apt),
+   빌라·주택 세대수(house.json, 건축물대장), 병원권 병원·중소병원·의원의 의사 수, 약국의 약사 수를 센다(scan.js).
+   묶음 표시를 꺼도 모두 센다 */
 const APT = { basis: '', a: [] };
+const HOUSE = { basis: '', h: [] };
 const SCAN_R = [100, 300, 500];
 function scanSets(){
   return {
     apts: APT.a,
+    houses: HOUSE.h,
     docs: H.map(h => ({ x: h.x, y: h.y, d: h.tot, n: h.s, key: 'h:' + h.no }))
       .concat(LOC.m.map(m => ({ x: m.x, y: m.y, d: m.d, n: m.n, key: 'm:' + m.id })), LOC.c.map(c => ({ x: c.x, y: c.y, d: c.d, n: c.n, key: 'c:' + c.id }))),
     pharms: P.map(p => ({ x: p.x, y: p.y, ps: p.ps, n: p.n, key: 'p:' + p.id })).concat(LOC.p.map(p => ({ x: p.x, y: p.y, ps: p.ps, n: p.n, key: 'l:' + p.id }))),
@@ -800,14 +803,16 @@ function renderScan(){
     <h2>반경 ${R}m 분석</h2>
     <p class="addr">지도에서 고른 지점 주변입니다. 다른 곳을 누르면 그 지점으로 다시 셉니다.</p>
     <div class="regions" role="group" aria-label="반경 선택">${SCAN_R.map(v => `<button type="button" data-r="${v}" aria-pressed="${v === R}">${v}m</button>`).join('')}</div>
-    <dl class="facts n3 loc">
+    <dl class="facts loc">
       <div class="hl"><dt>아파트 세대</dt><dd>${r.hh.toLocaleString()}</dd></div>
+      <div class="hl"><dt>빌라·주택</dt><dd>${r.house.toLocaleString()}</dd></div>
       <div><dt>의사</dt><dd>${r.d}</dd></div>
       <div><dt>약사</dt><dd>${r.ps}</dd></div>
     </dl>
-    <p class="facts-note">약국 1곳당 아파트 ${per(r.hh, r.pharms.length, 0)}세대 · 약사 1명당 의사 ${per(r.d, r.ps)}명</p>
-    <div class="sec-h"><h3>아파트 ${r.apts.length}단지 · ${r.hh.toLocaleString()}세대</h3><span>공동주택관리정보시스템(K-apt) 가입 단지만 셉니다. 작은 빌라와 단독주택은 빠집니다.${APT.basis ? ` ${APT.basis.replace(/-/g, '.')} 기준.` : ' 자료를 아직 불러오지 못했습니다.'}</span></div>
+    <p class="facts-note">약국 1곳당 ${per(r.hh + r.house, r.pharms.length, 0)}세대(아파트+빌라·주택) · 약사 1명당 의사 ${per(r.d, r.ps)}명</p>
+    <div class="sec-h"><h3>아파트 ${r.apts.length}단지 · ${r.hh.toLocaleString()}세대</h3><span>공동주택관리정보시스템(K-apt) 가입 단지만 셉니다. 빌라와 단독주택은 아래에 따로 셉니다.${APT.basis ? ` ${APT.basis.replace(/-/g, '.')} 기준.` : ' 자료를 아직 불러오지 못했습니다.'}</span></div>
     <ol class="scan-list">${r.apts.map(z => row(z, z.x.n, `${z.x.hh.toLocaleString()}세대`)).join('') || '<li>반경 안 단지 없음</li>'}</ol>
+    <div class="sec-h"><h3>빌라·주택 ${r.house.toLocaleString()}세대</h3><span>건축물대장의 다세대·연립·단독·다가구·상가주택과 K-apt에 없는 아파트를 약 100m 칸으로 모아 셉니다. 빈집과 다가구의 빈 가구도 들어 있어 실제 사는 가구보다 많습니다.${HOUSE.basis ? ` ${HOUSE.basis.replace(/-/g, '.')} 기준.` : ' 자료를 아직 불러오지 못했습니다.'}</span></div>
     <div class="sec-h"><h3>병원·의원 ${r.docs.length}곳 · 의사 ${r.d}명</h3><span>병원권 병원, 중소병원, 로컬 의원을 모두 셉니다(치과 제외).</span></div>
     <ol class="scan-list">${r.docs.map(z => row(z, z.x.n, `의사 ${z.x.d}명`)).join('') || '<li>반경 안 병원·의원 없음</li>'}</ol>
     <div class="sec-h"><h3>약국 ${r.pharms.length}곳 · 약사 ${r.ps}명</h3></div>
@@ -1485,6 +1490,12 @@ document.querySelectorAll('[data-medmin]').forEach(e => { e.textContent = MED_MI
 VER_READY.then(ver => getData('apt', ver)).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
   if (!j) return;
   APT.basis = j.basis; APT.a = j.a.map(([n, hh, x, y]) => ({ n, hh, x, y }));
+  if (state.scan) renderScan();
+});
+// 반경 분석의 빌라·주택 세대수(house.json, tools/build_house.py). 없으면 0세대로 센다
+VER_READY.then(ver => getData('house', ver)).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
+  if (!j) return;
+  HOUSE.basis = j.basis; HOUSE.h = j.h;
   if (state.scan) renderScan();
 });
 const BLDG_READY = VER_READY.then(ver => getData('bldg', ver)).then(r => r.ok ? r.json() : {}).catch(() => ({}));

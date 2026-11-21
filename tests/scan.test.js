@@ -28,3 +28,10 @@ test('가까운 순으로 두고 거리를 붙인다', () => {
   const r = S.summarize(O, 300, { apts: [N(200, { hh: 1 }), N(10, { hh: 1 })], docs: [], pharms: [] });
   assert.deepEqual(r.apts.map(z => z.d), [10, 200]);
 });
+
+test('빌라·주택 격자 칸은 대표점이 반경 안이면 세대를 모두 센다', () => {
+  const cell = (dy, hh) => { const q = N(dy); return [q.x, q.y, hh]; };
+  const r = S.summarize(O, 300, { apts: [], docs: [], pharms: [], houses: [cell(50, 40), cell(290, 7), cell(350, 100)] });
+  assert.equal(r.house, 47);
+  assert.equal(S.summarize(O, 300, { apts: [], docs: [], pharms: [] }).house, 0);
+});
